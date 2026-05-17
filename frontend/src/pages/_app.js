@@ -1,32 +1,61 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { SessionProvider } from 'next-auth/react';
 import useAuthStore from '../context/authStore';
+import SplashScreen from '../components/ui/SplashScreen';
 import '../styles/globals.css';
 
 const PUBLIC_ROUTES = ['/login', '/signup', '/offline', '/auth/google-sync'];
+const SPLASH_KEY = 'max_splash_seen';
 
 export default function App({ Component, pageProps }) {
   const router = useRouter();
   const { init, isAuthenticated, isLoading } = useAuthStore();
+  const [showSplash, setShowSplash] = useState(null);
 
   useEffect(() => {
     init();
   }, []);
 
   useEffect(() => {
-    if (isLoading) return;
+    try {
+      const seen = sessionStorage.getItem(SPLASH_KEY);
+      setShowSplash(seen !== '1');
+    } catch {
+      setShowSplash(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isLoading || showSplash) return;
     const isPublic = PUBLIC_ROUTES.includes(router.pathname);
     if (!isAuthenticated && !isPublic) {
       router.replace('/login');
     }
-  }, [isAuthenticated, isLoading, router.pathname]);
+  }, [isAuthenticated, isLoading, router.pathname, showSplash]);
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
   }, []);
+
+  const handleSplashComplete = () => {
+    try {
+      sessionStorage.setItem(SPLASH_KEY, '1');
+    } catch {
+      /* ignore */
+    }
+    setShowSplash(false);
+  };
+
+  if (showSplash === null) {
+    return <div className="fixed inset-0" style={{ background: '#0A0A0F' }} />;
+  }
+
+  if (showSplash) {
+    return <SplashScreen onComplete={handleSplashComplete} />;
+  }
 
   if (isLoading) {
     return (
