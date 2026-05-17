@@ -13,6 +13,9 @@ const BADGES = {
   meme_lord: { icon: '🎭', label: 'MEME LORD', color: '#8B5CF6' },
   early_adopter: { icon: '🚀', label: 'EARLY ADOPTER', color: '#00F5FF' },
   social_butterfly: { icon: '🦋', label: 'SOCIAL BUTTERFLY', color: '#EC4899' },
+  meme_warrior: { icon: '⚔️', label: 'MEME WARRIOR', color: '#FF006E' },
+  meme_champion: { icon: '🏆', label: 'MEME CHAMPION', color: '#FFB703' },
+  undefeated: { icon: '👑', label: 'UNDEFEATED', color: '#00F5FF' },
 };
 
 export default function Profile() {
@@ -94,6 +97,26 @@ export default function Profile() {
               <span className="font-heading text-xl font-bold mt-1" style={{ color: '#8B5CF6' }}>{user.totalMemesSent}</span>
               <span className="font-mono text-[10px] tracking-widest" style={{ color: '#6B6B8A' }}>MEMES SENT</span>
             </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="p-3 rounded-sm" style={{ background: '#12121A', border: '1px solid #252535' }}>
+            <div className="font-mono text-[10px] mb-2" style={{ color: '#6B6B8A' }}>// BATTLE RECORD</div>
+            <p className="font-heading text-lg font-bold" style={{ color: '#FF006E' }}>
+              {user.battlesWon || 0}W — {user.battlesLost || 0}L
+            </p>
+            <p className="font-mono text-[10px]" style={{ color: '#FFB703' }}>STREAK {user.battleWinStreak || 0}</p>
+          </div>
+          <div className="p-3 rounded-sm" style={{ background: '#12121A', border: '1px solid #252535' }}>
+            <div className="font-mono text-[10px] mb-2" style={{ color: '#6B6B8A' }}>// HIGH SCORES</div>
+            <p className="font-mono text-[10px]" style={{ color: '#00F5FF' }}>QUIZ {user.quizHighScore || 0}/10</p>
+            <p className="font-mono text-[10px]" style={{ color: '#06D6A0' }}>
+              REACT {user.reactionBestAvg ? `${user.reactionBestAvg}ms` : '—'}
+            </p>
+            <p className="font-mono text-[10px]" style={{ color: '#FFB703' }}>
+              MATCH {user.memeMatchBestTime ? `${user.memeMatchBestTime}s` : '—'}
+            </p>
           </div>
         </div>
 

@@ -290,7 +290,15 @@ export default function ChatPage() {
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-        <div className="font-mono text-[10px] tracking-widest px-2 py-1 rounded-sm" style={{ background: '#1A1A26', border: '1px solid #252535', color: '#6B6B8A' }}>
+        <button
+          type="button"
+          onClick={() => friendId && router.push({ pathname: '/battle', query: { challenge: friendId } })}
+          className="hud-btn px-2 py-1 rounded-sm text-[10px]"
+          style={{ background: 'rgba(255,0,110,0.1)', border: '1px solid rgba(255,0,110,0.35)', color: '#FF006E' }}
+        >
+          ⚔️
+        </button>
+                <div className="font-mono text-[10px] tracking-widest px-2 py-1 rounded-sm" style={{ background: '#1A1A26', border: '1px solid #252535', color: '#6B6B8A' }}>
           SECURE
         </div>
         <div ref={e2eRef} className="relative">

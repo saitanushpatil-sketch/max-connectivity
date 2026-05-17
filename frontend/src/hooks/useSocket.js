@@ -40,6 +40,10 @@ const useSocket = (handlers = {}) => {
     const handleUserStatus = (data) => handlersRef.current.onUserStatus?.(data);
     const handleMessageReacted = (data) => handlersRef.current.onMessageReacted?.(data);
     const handleMessagesRead = (data) => handlersRef.current.onMessagesRead?.(data);
+    const handleBattleChallenge = (data) => handlersRef.current.onBattleChallenge?.(data);
+    const handleBattleAccepted = (data) => handlersRef.current.onBattleAccepted?.(data);
+    const handleBattleVoteUpdate = (data) => handlersRef.current.onBattleVoteUpdate?.(data);
+    const handleBattleCompleted = (data) => handlersRef.current.onBattleCompleted?.(data);
 
     on('connect', handleConnect);
     on('disconnect', handleDisconnect);
@@ -50,6 +54,10 @@ const useSocket = (handlers = {}) => {
     on('user_status', handleUserStatus);
     on('message_reacted', handleMessageReacted);
     on('messages_read', handleMessagesRead);
+    on('battle_challenge', handleBattleChallenge);
+    on('battle_accepted', handleBattleAccepted);
+    on('battle_vote_update', handleBattleVoteUpdate);
+    on('battle_completed', handleBattleCompleted);
 
     return () => {
       off('connect', handleConnect);
@@ -61,6 +69,10 @@ const useSocket = (handlers = {}) => {
       off('user_status', handleUserStatus);
       off('message_reacted', handleMessageReacted);
       off('messages_read', handleMessagesRead);
+      off('battle_challenge', handleBattleChallenge);
+      off('battle_accepted', handleBattleAccepted);
+      off('battle_vote_update', handleBattleVoteUpdate);
+      off('battle_completed', handleBattleCompleted);
     };
   }, [isAuthenticated, token]);
 

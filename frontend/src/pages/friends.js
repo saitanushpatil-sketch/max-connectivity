@@ -99,6 +99,13 @@ export default function Friends() {
                     MSG
                   </button>
                   <button
+                    onClick={() => router.push({ pathname: '/battle', query: { challenge: f._id } })}
+                    className="hud-btn px-2 py-1.5 rounded-sm text-[10px]"
+                    style={{ background: 'rgba(255,0,110,0.1)', border: '1px solid rgba(255,0,110,0.35)', color: '#FF006E' }}
+                  >
+                    ⚔️
+                  </button>
+                  <button
                     onClick={() => removeFriend(f._id)}
                     className="hud-btn px-3 py-1.5 rounded-sm text-[10px]"
                     style={{ background: 'rgba(255,0,110,0.08)', border: '1px solid rgba(255,0,110,0.2)', color: '#FF006E' }}

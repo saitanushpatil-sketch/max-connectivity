@@ -12,6 +12,8 @@ const friendRoutes = require('./routes/friends');
 const messageRoutes = require('./routes/messages');
 const memeRoutes = require('./routes/memes');
 const pushRoutes = require('./routes/push');
+const battleRoutes = require('./routes/battles');
+const gameRoutes = require('./routes/games');
 const { configureWebPush } = require('./utils/pushService');
 
 const app = express();
@@ -37,6 +39,8 @@ app.use('/api/friends', friendRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/memes', memeRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/battles', battleRoutes);
+app.use('/api/games', gameRoutes);
 
 configureWebPush();
 

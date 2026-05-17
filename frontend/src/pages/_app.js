@@ -6,7 +6,7 @@ import SplashScreen from '../components/ui/SplashScreen';
 import PushNotificationInit from '../components/PushNotificationInit';
 import '../styles/globals.css';
 
-const PUBLIC_ROUTES = ['/login', '/signup', '/offline', '/auth/google-sync'];
+const PUBLIC_ROUTES = ['/login', '/signup', '/offline', '/auth/google-sync', '/search'];
 const SPLASH_KEY = 'max_splash_seen';
 
 export default function App({ Component, pageProps }) {

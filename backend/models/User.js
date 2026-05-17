@@ -65,9 +65,24 @@ const userSchema = new mongoose.Schema({
   totalMemesSent: { type: Number, default: 0 },
   badges: {
     type: [String],
-    enum: ['week_streak', 'month_streak', 'meme_lord', 'early_adopter', 'social_butterfly'],
+    enum: [
+      'week_streak',
+      'month_streak',
+      'meme_lord',
+      'early_adopter',
+      'social_butterfly',
+      'meme_warrior',
+      'meme_champion',
+      'undefeated',
+    ],
     default: [],
   },
+  battlesWon: { type: Number, default: 0 },
+  battlesLost: { type: Number, default: 0 },
+  battleWinStreak: { type: Number, default: 0 },
+  quizHighScore: { type: Number, default: 0 },
+  reactionBestAvg: { type: Number, default: null },
+  memeMatchBestTime: { type: Number, default: null },
   // Friend list (stored as references for fast lookup)
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   // Web Push subscription (endpoint + keys)
@@ -139,6 +154,12 @@ userSchema.methods.toPublicJSON = function () {
     streakCount: this.streakCount,
     totalMemesSent: this.totalMemesSent,
     badges: this.badges,
+    battlesWon: this.battlesWon,
+    battlesLost: this.battlesLost,
+    battleWinStreak: this.battleWinStreak,
+    quizHighScore: this.quizHighScore,
+    reactionBestAvg: this.reactionBestAvg,
+    memeMatchBestTime: this.memeMatchBestTime,
     createdAt: this.createdAt,
   };
 };

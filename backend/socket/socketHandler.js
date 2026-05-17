@@ -23,7 +23,13 @@ const getUserSockets = (userId) => {
 
 const isOnline = (userId) => onlineUsers.has(userId) && onlineUsers.get(userId).size > 0;
 
+const { setSocketHelpers } = require('./socketEmitter');
+
+exports.getUserSockets = getUserSockets;
+exports.isOnline = isOnline;
+
 exports.initSocket = (io) => {
+  setSocketHelpers(io, getUserSockets);
   // Auth middleware for socket
   io.use(async (socket, next) => {
     try {
