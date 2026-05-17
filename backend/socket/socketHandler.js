@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Message = require('../models/Message');
+const { sendMessagePush } = require('../utils/pushService');
 
 // Map: userId -> Set of socketIds (user can have multiple tabs)
 const onlineUsers = new Map();
@@ -99,6 +100,16 @@ exports.initSocket = (io) => {
               from: { userId, username: socket.user.username, displayName: socket.user.displayName, avatarColor: socket.user.avatarColor },
             });
           });
+        } else {
+          // Receiver offline — Web Push notification
+          sendMessagePush({
+            receiverId,
+            senderDisplayName: socket.user.displayName || socket.user.username,
+            content,
+            conversationId,
+            messageType: type || 'text',
+            memeName: memeData?.name,
+          }).catch((err) => console.error('Push dispatch error:', err));
         }
 
         callback?.({ success: true, message: populated });

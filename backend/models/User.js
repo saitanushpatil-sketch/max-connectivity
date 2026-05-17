@@ -70,6 +70,11 @@ const userSchema = new mongoose.Schema({
   },
   // Friend list (stored as references for fast lookup)
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  // Web Push subscription (endpoint + keys)
+  pushSubscription: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null,
+  },
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

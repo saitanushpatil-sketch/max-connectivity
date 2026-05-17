@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Avatar from '../components/ui/Avatar';
 import BottomNav from '../components/ui/BottomNav';
 import useAuthStore from '../context/authStore';
+import usePushNotifications from '../hooks/usePushNotifications';
 import api from '../utils/api';
 
 const COLORS = ['#00F5FF', '#FF006E', '#06D6A0', '#FFB703', '#8B5CF6', '#F97316', '#EC4899'];
@@ -21,6 +22,12 @@ export default function Profile() {
   const [form, setForm] = useState({ displayName: user?.displayName || '', bio: user?.bio || '', avatarColor: user?.avatarColor || '#00F5FF' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [pushLoading, setPushLoading] = useState(false);
+  const { isSupported, isSubscribed, subscribe, unsubscribe, checkSubscribed } = usePushNotifications();
+
+  useEffect(() => {
+    if (user) checkSubscribed();
+  }, [user, checkSubscribed]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -38,6 +45,16 @@ export default function Profile() {
   const handleLogout = () => {
     logout();
     router.replace('/login');
+  };
+
+  const handlePushToggle = async () => {
+    setPushLoading(true);
+    if (isSubscribed) {
+      await unsubscribe();
+    } else {
+      await subscribe();
+    }
+    setPushLoading(false);
   };
 
   if (!user) return null;
@@ -148,6 +165,66 @@ export default function Profile() {
           >
             ✏ EDIT OPERATOR PROFILE
           </button>
+        )}
+
+        {/* Push notifications */}
+        {isSupported && (
+          <div
+            className="p-4 rounded-sm corner-brackets"
+            style={{ background: '#12121A', border: '1px solid #252535' }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className="w-10 h-10 flex items-center justify-center rounded-sm flex-shrink-0"
+                  style={{
+                    background: isSubscribed ? 'rgba(6,214,160,0.12)' : 'rgba(107,107,138,0.1)',
+                    border: `1px solid ${isSubscribed ? 'rgba(6,214,160,0.4)' : '#252535'}`,
+                    boxShadow: isSubscribed ? '0 0 12px rgba(6,214,160,0.25)' : 'none',
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: isSubscribed ? '#06D6A0' : '#6B6B8A' }}>
+                    <path d="M12 2C8.5 2 6 4.5 6 8V12L4 14V15H20V14L18 12V8C18 4.5 15.5 2 12 2Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                    <path d="M9 19H15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                    <path d="M10 22H14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <div className="font-mono text-[10px] tracking-widest" style={{ color: '#6B6B8A' }}>// ALERTS</div>
+                  <p className="font-heading text-sm font-semibold tracking-wider" style={{ color: isSubscribed ? '#06D6A0' : '#6B6B8A' }}>
+                    NOTIFICATIONS {isSubscribed ? 'ON' : 'OFF'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handlePushToggle}
+                disabled={pushLoading}
+                className="relative w-12 h-6 rounded-sm flex-shrink-0 transition-all"
+                style={{
+                  background: isSubscribed ? 'rgba(6,214,160,0.2)' : '#0A0A0F',
+                  border: `1px solid ${isSubscribed ? '#06D6A0' : '#252535'}`,
+                  opacity: pushLoading ? 0.6 : 1,
+                }}
+                aria-pressed={isSubscribed}
+                aria-label={`Notifications ${isSubscribed ? 'on' : 'off'}`}
+              >
+                <span
+                  className="absolute top-0.5 w-5 h-5 rounded-sm transition-all"
+                  style={{
+                    left: isSubscribed ? 'calc(100% - 22px)' : '2px',
+                    background: isSubscribed ? '#06D6A0' : '#6B6B8A',
+                    boxShadow: isSubscribed ? '0 0 8px rgba(6,214,160,0.6)' : 'none',
+                  }}
+                />
+              </button>
+            </div>
+            <p className="font-mono text-[9px] tracking-widest mt-3" style={{ color: '#6B6B8A' }}>
+              {isSubscribed
+                ? 'INCOMING TRANSMISSIONS WILL ALERT THIS DEVICE'
+                : 'ENABLE TO RECEIVE MESSAGES WHEN OFFLINE'}
+            </p>
+          </div>
         )}
 
         {/* Logout */}

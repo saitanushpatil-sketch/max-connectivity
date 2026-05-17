@@ -11,6 +11,8 @@ const userRoutes = require('./routes/users');
 const friendRoutes = require('./routes/friends');
 const messageRoutes = require('./routes/messages');
 const memeRoutes = require('./routes/memes');
+const pushRoutes = require('./routes/push');
+const { configureWebPush } = require('./utils/pushService');
 
 const app = express();
 const server = http.createServer(app);
@@ -34,6 +36,9 @@ app.use('/api/users', userRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/memes', memeRoutes);
+app.use('/api/push', pushRoutes);
+
+configureWebPush();
 
 app.use((req, res) => res.status(404).json({ error: 'Route not found' }));
 app.use((err, req, res, next) => {

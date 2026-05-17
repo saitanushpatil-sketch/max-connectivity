@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { SessionProvider } from 'next-auth/react';
 import useAuthStore from '../context/authStore';
 import SplashScreen from '../components/ui/SplashScreen';
+import PushNotificationInit from '../components/PushNotificationInit';
 import '../styles/globals.css';
 
 const PUBLIC_ROUTES = ['/login', '/signup', '/offline', '/auth/google-sync'];
@@ -87,6 +88,7 @@ export default function App({ Component, pageProps }) {
 
   return (
     <SessionProvider>
+      <PushNotificationInit />
       <div className="fixed inset-0 flex justify-center" style={{ background: '#0A0A0F' }}>
         <div className="relative w-full max-w-app h-full flex flex-col overflow-hidden hud-bg scan-line-container">
           <Component {...pageProps} />
