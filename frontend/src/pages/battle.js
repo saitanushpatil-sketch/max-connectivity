@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import BottomNav from '../components/ui/BottomNav';
+import ErrorBoundary from '../components/ui/ErrorBoundary';
 import BattleCard from '../components/battle/BattleCard';
 import ChallengePicker from '../components/battle/ChallengePicker';
 import useAuthStore from '../context/authStore';
@@ -137,25 +138,36 @@ export default function BattlePage() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
-        {loading ? (
-          <div className="flex justify-center py-12 gap-1">
-            <span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" />
-          </div>
-        ) : tab === 'active' ? (
-          active.length === 0 ? (
-            <div className="text-center py-16 font-mono text-xs" style={{ color: '#6B6B8A' }}>
-              NO ACTIVE BATTLES — CHALLENGE A FRIEND
+        <ErrorBoundary fallbackMessage="Battle module failed to load.">
+          {loading ? (
+            <div className="grid grid-cols-1 gap-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="meme-skeleton h-48 rounded-sm" />
+              ))}
+            </div>
+          ) : tab === 'active' ? (
+            active.length === 0 ? (
+              <div className="text-center py-16 px-4">
+                <p className="font-heading text-xl font-bold empty-hud-text mb-2" style={{ color: '#FF006E' }}>
+                  NO ACTIVE BATTLES
+                </p>
+                <p className="font-mono text-xs" style={{ color: '#6B6B8A' }}>
+                  CHALLENGE A FRIEND TO START COMBAT
+                </p>
+              </div>
+            ) : (
+              active.map((b) => <BattleCard key={b._id} battle={b} onUpdate={upsertBattle} />)
+            )
+          ) : history.length === 0 ? (
+            <div className="text-center py-16">
+              <p className="font-heading text-lg empty-hud-text" style={{ color: '#6B6B8A' }}>
+                NO BATTLE HISTORY
+              </p>
             </div>
           ) : (
-            active.map((b) => (
-              <BattleCard key={b._id} battle={b} onUpdate={upsertBattle} />
-            ))
-          )
-        ) : history.length === 0 ? (
-          <div className="text-center py-16 font-mono text-xs" style={{ color: '#6B6B8A' }}>NO BATTLE HISTORY</div>
-        ) : (
-          history.map((b) => <BattleCard key={b._id} battle={b} onUpdate={load} />)
-        )}
+            history.map((b) => <BattleCard key={b._id} battle={b} onUpdate={load} />)
+          )}
+        </ErrorBoundary>
       </div>
 
       {showPicker && (

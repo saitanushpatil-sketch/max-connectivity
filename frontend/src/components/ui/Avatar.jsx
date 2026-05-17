@@ -1,4 +1,6 @@
-export default function Avatar({ user, size = 40, showStatus = false, className = '' }) {
+import { memo } from 'react';
+
+function Avatar({ user, size = 40, showStatus = false, className = '' }) {
   if (!user) return null;
 
   const initials = (user.displayName || user.username || '?')
@@ -43,3 +45,5 @@ export default function Avatar({ user, size = 40, showStatus = false, className 
     </div>
   );
 }
+
+export default memo(Avatar);

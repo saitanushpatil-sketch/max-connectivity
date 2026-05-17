@@ -2,6 +2,10 @@
 const nextConfig = {
   reactStrictMode: false,
   images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: 'i.imgflip.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'imgflip.com', pathname: '/**' },
+    ],
     domains: ['i.imgflip.com', 'imgflip.com'],
   },
   async headers() {

@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../utils/api';
+import MemeImage from '../ui/MemeImage';
+import SkeletonGrid from '../ui/SkeletonGrid';
 
 const CATEGORIES = ['All', 'Reaction', 'Greeting', 'Emotion', 'Humor', 'Relatable', 'Savage', 'Wholesome', 'Gaming', 'Work', 'College'];
 
@@ -30,7 +32,7 @@ export default function MemePanel({ searchQuery = '', onSelect, onClose }) {
   }, [searchQuery]);
 
   useEffect(() => {
-    const timer = setTimeout(() => fetchMemes(localSearch, category), 250);
+    const timer = setTimeout(() => fetchMemes(localSearch, category), 300);
     return () => clearTimeout(timer);
   }, [localSearch, category, fetchMemes]);
 
@@ -100,11 +102,7 @@ export default function MemePanel({ searchQuery = '', onSelect, onClose }) {
       {/* Grid */}
       <div className="flex-1 overflow-y-auto px-3 pb-3">
         {loading ? (
-          <div className="grid grid-cols-3 gap-2">
-            {Array.from({ length: 9 }, (_, i) => (
-              <div key={i} className="meme-skeleton aspect-square rounded-sm" />
-            ))}
-          </div>
+          <SkeletonGrid count={9} cols={3} />
         ) : memes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2">
             <span style={{ fontSize: 32 }}>🎭</span>
@@ -119,14 +117,11 @@ export default function MemePanel({ searchQuery = '', onSelect, onClose }) {
                 className="relative group rounded-sm overflow-hidden aspect-square"
                 style={{ background: '#12121A', border: '1px solid #252535' }}
               >
-                <img
+                <MemeImage
                   src={meme.url}
                   alt={meme.name}
-                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                  style={{ transform: 'translateZ(0)' }}
-                  loading="lazy"
-                  decoding="async"
-                  fetchPriority="low"
+                  fill
+                  className="w-full h-full transition-transform group-hover:scale-105"
                 />
                 <div
                   className="absolute inset-0 flex items-end opacity-0 group-hover:opacity-100 transition-opacity p-1"

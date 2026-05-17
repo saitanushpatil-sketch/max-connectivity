@@ -100,23 +100,35 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 rounded-sm" style={{ background: '#12121A', border: '1px solid #252535' }}>
-            <div className="font-mono text-[10px] mb-2" style={{ color: '#6B6B8A' }}>// BATTLE RECORD</div>
-            <p className="font-heading text-lg font-bold" style={{ color: '#FF006E' }}>
-              {user.battlesWon || 0}W — {user.battlesLost || 0}L
-            </p>
-            <p className="font-mono text-[10px]" style={{ color: '#FFB703' }}>STREAK {user.battleWinStreak || 0}</p>
+        <div className="p-4 rounded-sm" style={{ background: '#12121A', border: '1px solid #252535' }}>
+          <div className="font-mono text-[10px] tracking-widest mb-3" style={{ color: '#6B6B8A' }}>// BATTLE STATS</div>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: 'WINS', val: user.battlesWon || 0, color: '#06D6A0' },
+              { label: 'LOSSES', val: user.battlesLost || 0, color: '#FF006E' },
+              { label: 'STREAK', val: user.battleWinStreak || 0, color: '#FFB703' },
+            ].map(({ label, val, color }) => (
+              <div key={label} className="text-center py-3 rounded-sm" style={{ background: '#0A0A0F', border: '1px solid #252535' }}>
+                <span className="font-heading text-xl font-bold" style={{ color }}>{val}</span>
+                <span className="block font-mono text-[9px] tracking-widest mt-1" style={{ color: '#6B6B8A' }}>{label}</span>
+              </div>
+            ))}
           </div>
-          <div className="p-3 rounded-sm" style={{ background: '#12121A', border: '1px solid #252535' }}>
-            <div className="font-mono text-[10px] mb-2" style={{ color: '#6B6B8A' }}>// HIGH SCORES</div>
-            <p className="font-mono text-[10px]" style={{ color: '#00F5FF' }}>QUIZ {user.quizHighScore || 0}/10</p>
-            <p className="font-mono text-[10px]" style={{ color: '#06D6A0' }}>
-              REACT {user.reactionBestAvg ? `${user.reactionBestAvg}ms` : '—'}
-            </p>
-            <p className="font-mono text-[10px]" style={{ color: '#FFB703' }}>
-              MATCH {user.memeMatchBestTime ? `${user.memeMatchBestTime}s` : '—'}
-            </p>
+        </div>
+
+        <div className="p-4 rounded-sm" style={{ background: '#12121A', border: '1px solid #252535' }}>
+          <div className="font-mono text-[10px] tracking-widest mb-3" style={{ color: '#6B6B8A' }}>// GAME HIGH SCORES</div>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: 'QUIZ', val: `${user.quizHighScore || 0}/10`, color: '#00F5FF' },
+              { label: 'REACT', val: user.reactionBestAvg ? `${user.reactionBestAvg}ms` : '—', color: '#06D6A0' },
+              { label: 'MATCH', val: user.memeMatchBestTime ? `${user.memeMatchBestTime}s` : '—', color: '#FFB703' },
+            ].map(({ label, val, color }) => (
+              <div key={label} className="text-center py-3 rounded-sm" style={{ background: '#0A0A0F', border: '1px solid #252535' }}>
+                <span className="font-heading text-lg font-bold" style={{ color }}>{val}</span>
+                <span className="block font-mono text-[9px] tracking-widest mt-1" style={{ color: '#6B6B8A' }}>{label}</span>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -125,14 +137,18 @@ export default function Profile() {
           <div className="p-4 rounded-sm" style={{ background: '#12121A', border: '1px solid #252535' }}>
             <div className="font-mono text-[10px] tracking-widest mb-3" style={{ color: '#6B6B8A' }}>// ACHIEVEMENTS</div>
             <div className="flex flex-wrap gap-2">
-              {user.badges.map((badge) => {
+              {user.badges.map((badge, i) => {
                 const b = BADGES[badge];
                 if (!b) return null;
                 return (
                   <div
                     key={badge}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm"
-                    style={{ background: `${b.color}11`, border: `1px solid ${b.color}44` }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm badge-bounce"
+                    style={{
+                      animationDelay: `${i * 0.08}s`,
+                      background: `${b.color}11`,
+                      border: `1px solid ${b.color}44`,
+                    }}
                   >
                     <span style={{ fontSize: 14 }}>{b.icon}</span>
                     <span className="font-mono text-[10px] tracking-widest" style={{ color: b.color }}>{b.label}</span>

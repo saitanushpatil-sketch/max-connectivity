@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, memo, useRef, useCallback } from 'react';
 import Avatar from '../ui/Avatar';
+import MemeImage from '../ui/MemeImage';
 
 const EMOJIS = ['❤️', '😂', '🔥', '👀', '💀', '🤯'];
 
@@ -8,75 +9,92 @@ const formatTime = (date) => {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
-export default function MessageBubble({ message, isOwn, onReact, onReply, onDelete, currentUserId }) {
+function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
   const [showActions, setShowActions] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const pressTimerRef = useRef(null);
 
   const isDeleted = message.deletedForEveryone;
   const isRead = message.readBy?.some((id) => id !== message.sender?._id && id !== message.sender);
   const reactionCounts = {};
-  message.reactions?.forEach((r) => { reactionCounts[r.emoji] = r.users.length; });
+  message.reactions?.forEach((r) => {
+    reactionCounts[r.emoji] = r.users.length;
+  });
 
-  const handleLongPress = () => {
-    if (!isDeleted) { setShowActions(true); setShowEmojiPicker(false); }
-  };
+  const handleLongPress = useCallback(() => {
+    if (!isDeleted) {
+      setShowActions(true);
+      setShowEmojiPicker(false);
+    }
+  }, [isDeleted]);
 
-  let pressTimer = null;
-  const onTouchStart = () => { pressTimer = setTimeout(handleLongPress, 400); };
-  const onTouchEnd = () => { if (pressTimer) clearTimeout(pressTimer); };
+  const onTouchStart = useCallback(() => {
+    pressTimerRef.current = setTimeout(handleLongPress, 400);
+  }, [handleLongPress]);
+
+  const onTouchEnd = useCallback(() => {
+    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+  }, []);
 
   return (
     <div
       className={`message-bubble-row flex items-end gap-2 mb-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'} animate-fade-in relative`}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
-      onContextMenu={(e) => { e.preventDefault(); handleLongPress(); }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        handleLongPress();
+      }}
     >
-      {!isOwn && (
-        <Avatar user={message.sender} size={28} />
-      )}
+      {!isOwn && <Avatar user={message.sender} size={28} />}
 
-      <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} max-w-[75%]`}>
-        {/* Reply preview */}
+      <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} max-w-[75%] min-w-0`}>
         {message.replyTo && !message.replyTo.deletedForEveryone && (
           <div
-            className="text-xs px-2 py-1 mb-1 rounded-sm border-l-2"
-            style={{ borderColor: '#00F5FF', background: 'rgba(0,245,255,0.05)', color: '#6B6B8A', maxWidth: '100%' }}
+            className="text-xs px-2 py-1 mb-1 rounded-sm border-l-2 max-w-full"
+            style={{ borderColor: '#00F5FF', background: 'rgba(0,245,255,0.05)', color: '#6B6B8A' }}
           >
             <span className="block truncate">{message.replyTo.content}</span>
           </div>
         )}
 
-        {/* Bubble */}
         <div
-          className={`relative px-3 py-2 rounded-sm cursor-pointer select-none ${isOwn ? 'bubble-own' : 'bubble-other'}`}
-          onClick={() => { if (!isDeleted) setShowActions(!showActions); setShowEmojiPicker(false); }}
+          className={`relative px-3 py-2 rounded-sm cursor-pointer select-none max-w-full ${isOwn ? 'bubble-own' : 'bubble-other'}`}
+          onClick={() => {
+            if (!isDeleted) setShowActions(!showActions);
+            setShowEmojiPicker(false);
+          }}
           style={{ wordBreak: 'break-word' }}
         >
           {isDeleted ? (
-            <span className="italic" style={{ color: '#6B6B8A', fontSize: 13 }}>⊘ This message was deleted</span>
+            <span className="italic" style={{ color: '#6B6B8A', fontSize: 13 }}>
+              ⊘ This message was deleted
+            </span>
           ) : message.type === 'meme' ? (
             <div>
-              <img
-                src={message.memeData?.url}
-                alt={message.memeData?.name || 'Meme'}
-                className="rounded-sm max-w-full"
-                style={{ maxHeight: 200, width: 'auto', display: 'block', transform: 'translateZ(0)' }}
-                loading="lazy"
-                decoding="async"
-                fetchPriority="low"
-              />
+              <div className="relative rounded-sm overflow-hidden" style={{ maxHeight: 200, width: '100%', minHeight: 80 }}>
+                <MemeImage
+                  src={message.memeData?.url}
+                  alt={message.memeData?.name || 'Meme'}
+                  fill
+                  className="w-full"
+                  sizes="(max-width: 768px) 75vw, 300px"
+                />
+              </div>
               {message.memeData?.name && (
-                <span className="block mt-1 font-mono text-[10px]" style={{ color: '#6B6B8A' }}>{message.memeData.name}</span>
+                <span className="block mt-1 font-mono text-[10px] truncate" style={{ color: '#6B6B8A' }}>
+                  {message.memeData.name}
+                </span>
               )}
             </div>
           ) : (
             <span style={{ fontSize: 14, lineHeight: 1.5, color: '#E8E8FF' }}>{message.content}</span>
           )}
 
-          {/* Time + read receipt */}
           <div className={`flex items-center gap-1 mt-1 ${isOwn ? 'justify-end' : 'justify-start'}`}>
-            <span className="font-mono text-[10px]" style={{ color: '#6B6B8A' }}>{formatTime(message.createdAt)}</span>
+            <span className="font-mono text-[10px]" style={{ color: '#6B6B8A' }}>
+              {formatTime(message.createdAt)}
+            </span>
             {isOwn && !isDeleted && (
               <span className={isRead ? 'tick-double' : 'tick-single'} style={{ fontSize: 11 }}>
                 {isRead ? '✓✓' : '✓'}
@@ -85,52 +103,63 @@ export default function MessageBubble({ message, isOwn, onReact, onReply, onDele
           </div>
         </div>
 
-        {/* Reactions display */}
         {Object.keys(reactionCounts).length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
             {Object.entries(reactionCounts).map(([emoji, count]) => (
               <button
                 key={emoji}
+                type="button"
                 onClick={() => onReact?.(message._id, emoji)}
-                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs"
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs active:scale-95"
                 style={{ background: 'rgba(0,245,255,0.08)', border: '1px solid rgba(0,245,255,0.2)' }}
               >
                 <span>{emoji}</span>
-                <span className="font-mono" style={{ color: '#00F5FF', fontSize: 10 }}>{count}</span>
+                <span className="font-mono" style={{ color: '#00F5FF', fontSize: 10 }}>
+                  {count}
+                </span>
               </button>
             ))}
           </div>
         )}
 
-        {/* Action menu */}
         {showActions && !isDeleted && (
           <div
             className={`flex items-center gap-1 mt-1 p-1 rounded-sm ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}
             style={{ background: '#1A1A26', border: '1px solid #252535' }}
           >
             <button
-              className="text-xs px-2 py-1 rounded-sm font-mono"
+              type="button"
+              className="text-xs px-2 py-1 rounded-sm font-mono active:scale-95"
               style={{ color: '#00F5FF', fontSize: 11 }}
-              onClick={() => { setShowEmojiPicker(!showEmojiPicker); }}
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
             >
               😊
             </button>
             <button
-              className="text-xs px-2 py-1 rounded-sm font-mono"
+              type="button"
+              className="text-xs px-2 py-1 rounded-sm font-mono active:scale-95"
               style={{ color: '#E8E8FF', fontSize: 11 }}
-              onClick={() => { onReply?.(message); setShowActions(false); }}
+              onClick={() => {
+                onReply?.(message);
+                setShowActions(false);
+              }}
             >
               ↩ REPLY
             </button>
             <button
-              className="text-xs px-2 py-1 rounded-sm font-mono"
+              type="button"
+              className="text-xs px-2 py-1 rounded-sm font-mono active:scale-95"
               style={{ color: '#FF006E', fontSize: 11 }}
-              onClick={() => { onDelete?.(message._id, isOwn); setShowActions(false); }}
+              onClick={() => {
+                onDelete?.(message._id, isOwn);
+                setShowActions(false);
+              }}
             >
               🗑
             </button>
             <button
-              className="text-xs px-2 py-1 rounded-sm font-mono"
+              type="button"
+              className="text-xs px-2 py-1 rounded-sm font-mono active:scale-95"
               style={{ color: '#6B6B8A', fontSize: 11 }}
               onClick={() => setShowActions(false)}
             >
@@ -139,7 +168,6 @@ export default function MessageBubble({ message, isOwn, onReact, onReply, onDele
           </div>
         )}
 
-        {/* Emoji picker */}
         {showEmojiPicker && (
           <div
             className="flex gap-1 mt-1 p-2 rounded-sm"
@@ -148,7 +176,8 @@ export default function MessageBubble({ message, isOwn, onReact, onReply, onDele
             {EMOJIS.map((emoji) => (
               <button
                 key={emoji}
-                className="text-xl hover:scale-125 transition-transform"
+                type="button"
+                className="text-xl hover:scale-125 transition-transform active:scale-95"
                 onClick={() => {
                   onReact?.(message._id, emoji);
                   setShowEmojiPicker(false);
@@ -164,3 +193,5 @@ export default function MessageBubble({ message, isOwn, onReact, onReply, onDele
     </div>
   );
 }
+
+export default memo(MessageBubble);

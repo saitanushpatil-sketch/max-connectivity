@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import useAuthStore from '../context/authStore';
 import useSocket from '../hooks/useSocket';
 import BottomNav from '../components/ui/BottomNav';
+import PullToRefresh from '../components/ui/PullToRefresh';
 import Avatar from '../components/ui/Avatar';
 import api from '../utils/api';
 
@@ -27,7 +28,7 @@ export default function Chats() {
   const [unreadCounts, setUnreadCounts] = useState({});
   const [loading, setLoading] = useState(true);
 
-  const fetchFriends = async () => {
+  const fetchFriends = useCallback(async () => {
     try {
       const { data } = await api.get('/friends');
       setFriends(data.friends || []);
@@ -49,9 +50,9 @@ export default function Chats() {
       }
     } catch (_) {}
     setLoading(false);
-  };
+  }, [user?._id]);
 
-  useEffect(() => { fetchFriends(); }, []);
+  useEffect(() => { fetchFriends(); }, [fetchFriends]);
 
   useSocket({
     onNewMessageNotification: ({ conversationId, message }) => {
@@ -103,8 +104,7 @@ export default function Chats() {
         </div>
       </div>
 
-      {/* List */}
-      <div className="flex-1 overflow-y-auto">
+      <PullToRefresh onRefresh={fetchFriends} className="flex-1">
         {loading ? (
           <div className="flex items-center justify-center h-32">
             <div className="flex gap-1"><span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" /></div>
@@ -158,7 +158,7 @@ export default function Chats() {
               </Link>
           ))
         )}
-      </div>
+      </PullToRefresh>
       <BottomNav />
     </div>
   );

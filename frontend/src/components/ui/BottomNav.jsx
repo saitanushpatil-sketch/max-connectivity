@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import api from '../../utils/api';
 import useSocket from '../../hooks/useSocket';
+import hapticTap from '../../utils/haptic';
 
 const NAV = [
   { href: '/chats', label: 'COMMS', icon: (active) => (
@@ -72,7 +73,12 @@ export default function BottomNav() {
           const isComms = href === '/chats';
           const isSquad = href === '/friends';
           return (
-            <Link key={href} href={href} className="flex flex-col items-center gap-0.5 min-w-0 flex-1 relative py-1">
+            <Link
+              key={href}
+              href={href}
+              onClick={() => hapticTap(6)}
+              className={`flex flex-col items-center gap-0.5 min-w-0 flex-1 relative py-1 transition-transform ${active ? 'nav-link-active' : ''}`}
+            >
               <div className="relative">
                 {icon(active)}
                 {isComms && unread > 0 && (

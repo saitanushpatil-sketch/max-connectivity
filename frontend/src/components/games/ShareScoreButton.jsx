@@ -42,7 +42,8 @@ export default function ShareScoreButton({ message }) {
       <button
         type="button"
         onClick={openPicker}
-        className="hud-btn hud-btn-ghost w-full py-2.5 rounded-sm text-xs mt-3"
+        className="hud-btn hud-btn-ghost w-full py-2.5 rounded-sm text-xs mt-3 active:scale-95"
+        style={{ border: '1px solid #00F5FF44', color: '#00F5FF' }}
       >
         📡 SHARE RESULT IN CHAT
       </button>

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../utils/api';
 import Avatar from '../ui/Avatar';
+import MemeImage from '../ui/MemeImage';
+import SkeletonGrid from '../ui/SkeletonGrid';
 
 export default function ChallengePicker({ friends, onClose, onSent, acceptBattle, onAccepted, preselectFriend }) {
   const [step, setStep] = useState(acceptBattle || preselectFriend ? 'meme' : 'friend');
@@ -50,12 +52,12 @@ export default function ChallengePicker({ friends, onClose, onSent, acceptBattle
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center"
+      className="fixed inset-0 z-50 flex items-end justify-center challenge-picker-backdrop"
       style={{ background: 'rgba(0,0,0,0.75)' }}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-app rounded-t-sm p-4 max-h-[80vh] overflow-y-auto"
+        className="w-full max-w-app rounded-t-sm p-4 max-h-[80vh] overflow-y-auto challenge-picker-slide"
         style={{ background: '#12121A', border: '1px solid #252535' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -98,9 +100,7 @@ export default function ChallengePicker({ friends, onClose, onSent, acceptBattle
               </p>
             )}
             {loading ? (
-              <div className="flex justify-center py-8 gap-1">
-                <span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" />
-              </div>
+              <SkeletonGrid count={9} cols={3} />
             ) : (
               <div className="grid grid-cols-3 gap-2">
                 {memes.map((meme) => (
@@ -109,10 +109,10 @@ export default function ChallengePicker({ friends, onClose, onSent, acceptBattle
                     type="button"
                     disabled={sending}
                     onClick={() => handleSend(meme)}
-                    className="aspect-square rounded-sm overflow-hidden"
+                    className="relative aspect-square rounded-sm overflow-hidden active:scale-95"
                     style={{ border: '1px solid #252535' }}
                   >
-                    <img src={meme.url} alt={meme.name} className="w-full h-full object-cover" loading="lazy" />
+                    <MemeImage src={meme.url} alt={meme.name} fill className="w-full h-full" />
                   </button>
                 ))}
               </div>

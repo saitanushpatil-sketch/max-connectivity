@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Avatar from '../components/ui/Avatar';
 import BottomNav from '../components/ui/BottomNav';
+import PullToRefresh from '../components/ui/PullToRefresh';
 import api from '../utils/api';
 import useAuthStore from '../context/authStore';
 
@@ -73,7 +74,7 @@ export default function Friends() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <PullToRefresh onRefresh={fetchAll} className="flex-1">
         {loading ? (
           <div className="flex justify-center py-16"><div className="flex gap-1"><span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" /></div></div>
         ) : tab === 'friends' ? (
@@ -159,7 +160,7 @@ export default function Friends() {
             )}
           </div>
         )}
-      </div>
+      </PullToRefresh>
       <BottomNav />
     </div>
   );
