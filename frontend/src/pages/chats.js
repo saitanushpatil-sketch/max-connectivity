@@ -7,6 +7,7 @@ import BottomNav from '../components/ui/BottomNav';
 import PullToRefresh from '../components/ui/PullToRefresh';
 import Avatar from '../components/ui/Avatar';
 import api from '../utils/api';
+import { SkeletonRow } from '../components/ui/Skeleton';
 
 const buildConvId = (a, b) => [a, b].sort().join('_');
 const timeAgo = (date) => {
@@ -106,9 +107,11 @@ export default function Chats() {
 
       <PullToRefresh onRefresh={fetchFriends} className="flex-1">
         {loading ? (
-          <div className="flex items-center justify-center h-32">
-            <div className="flex gap-1"><span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" /></div>
-          </div>
+          <>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <SkeletonRow key={i} />
+            ))}
+          </>
         ) : friendList.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 gap-4 px-8 text-center">
             <div className="w-16 h-16 flex items-center justify-center rounded-sm" style={{ border: '1px solid #252535', background: '#12121A' }}>
@@ -146,7 +149,7 @@ export default function Chats() {
                         ? last.deletedForEveryone
                           ? '⊘ Message deleted'
                           : last.type === 'meme'
-                          ? `🎭 ${last.memeData?.name || 'Meme'}`
+                          ? `🎭 ${last.content?.startsWith?.('data:image') ? 'Custom meme' : last.memeData?.name || 'Meme'}`
                           : last.content
                         : `@${friend.username}`}
                     </span>

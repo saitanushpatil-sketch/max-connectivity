@@ -5,6 +5,7 @@ import BottomNav from '../components/ui/BottomNav';
 import useAuthStore from '../context/authStore';
 import usePushNotifications from '../hooks/usePushNotifications';
 import api from '../utils/api';
+import Skeleton from '../components/ui/Skeleton';
 
 const COLORS = ['#00F5FF', '#FF006E', '#06D6A0', '#FFB703', '#8B5CF6', '#F97316', '#EC4899'];
 const BADGES = {
@@ -277,7 +278,7 @@ export default function Profile() {
 
         {/* Version */}
         <div className="text-center">
-          <span className="font-mono text-[10px] tracking-widest" style={{ color: '#3A3A4A' }}>MAX CONNECTIVITY v2.0 // JARVIS PROTOCOL</span>
+          <span className="font-mono text-[10px] tracking-widest" style={{ color: '#3A3A4A' }}>MAX CONNECTIVITY v2.0</span>
         </div>
       </div>
 

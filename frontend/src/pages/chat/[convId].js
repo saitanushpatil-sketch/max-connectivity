@@ -7,6 +7,8 @@ import MessageBubble from '../../components/chat/MessageBubble';
 import MemePanel from '../../components/meme/MemePanel';
 import Avatar from '../../components/ui/Avatar';
 import api from '../../utils/api';
+import useToast from '../../hooks/useToast';
+import hapticTap from '../../utils/haptic';
 
 const buildConvId = (a, b) => [a, b].sort().join('_');
 const MESSAGE_MAX_LENGTH = 2000;
@@ -35,6 +37,10 @@ export default function ChatPage() {
   const inputRef = useRef(null);
   const e2eRef = useRef(null);
   const [showE2ETooltip, setShowE2ETooltip] = useState(false);
+  const [showScrollFab, setShowScrollFab] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(true);
+  const messagesContainerRef = useRef(null);
+  const { toast } = useToast();
 
   // Derive friendId from convId
   const friendId = convId ? convId.split('_').find((id) => id !== user?._id) : null;
@@ -68,6 +74,8 @@ export default function ChatPage() {
   }, [convId, user]);
 
   const { joinConversation, sendMessage, emitTypingStart, emitTypingStop, reactMessage, markRead } = useSocket({
+    onConnect: () => setSocketConnected(true),
+    onDisconnect: () => setSocketConnected(false),
     onReceiveMessage: ({ message }) => {
       if (message.conversationId !== convId) return;
       setMessages((prev) => {
@@ -127,9 +135,10 @@ export default function ChatPage() {
     };
   }, [showE2ETooltip]);
 
-  const handleSendText = async () => {
+  const handleSendText = useCallback(async () => {
     if (!input.trim() || sending) return;
     const content = input.trim();
+    hapticTap(10);
     setInput('');
     setReplyTo(null);
     setShowMemePanel(false);
@@ -166,21 +175,28 @@ export default function ChatPage() {
     } catch {
       setMessages((prev) => prev.filter((m) => m._id !== tempMsg._id));
       setInput(content);
+      toast.error('Failed to send message');
     } finally {
       setSending(false);
     }
-  };
+  }, [input, sending, convId, friendId, user, replyTo, sendMessage, emitTypingStop, toast]);
 
-  const handleSendMeme = async (meme) => {
+  const handleSendMeme = useCallback(async (meme) => {
     setShowMemePanel(false);
     setSending(true);
+    hapticTap(10);
+    const isCanvas = !!meme.base64;
+    const content = isCanvas ? meme.base64 : meme.name;
+    const memeData = isCanvas
+      ? { name: meme.name, url: meme.base64 }
+      : { memeId: meme._id, name: meme.name, url: meme.url };
     const tempMsg = {
       _id: `temp_${Date.now()}`,
       conversationId: convId,
       sender: { _id: user._id, username: user.username, displayName: user.displayName, avatarColor: user.avatarColor },
       type: 'meme',
-      content: meme.name,
-      memeData: { memeId: meme._id, name: meme.name, url: meme.url },
+      content,
+      memeData,
       reactions: [],
       readBy: [user._id],
       createdAt: new Date().toISOString(),
@@ -193,19 +209,20 @@ export default function ChatPage() {
       const response = await sendMessage({
         conversationId: convId,
         receiverId: friendId,
-        content: meme.name,
+        content,
         type: 'meme',
-        memeData: { memeId: meme._id, name: meme.name, url: meme.url },
+        memeData,
       });
       setMessages((prev) =>
         prev.map((m) => m._id === tempMsg._id ? response.message : m)
       );
     } catch {
       setMessages((prev) => prev.filter((m) => m._id !== tempMsg._id));
+      toast.error('Failed to send meme');
     } finally {
       setSending(false);
     }
-  };
+  }, [convId, friendId, user, sendMessage, toast]);
 
   const handleInputChange = (e) => {
     setInput(e.target.value);
@@ -225,11 +242,11 @@ export default function ChatPage() {
     }, 2000);
   };
 
-  const handleReact = (messageId, emoji) => {
+  const handleReact = useCallback((messageId, emoji) => {
     reactMessage(messageId, emoji, convId);
-  };
+  }, [reactMessage, convId]);
 
-  const handleDelete = async (messageId, isOwn) => {
+  const handleDelete = useCallback(async (messageId, isOwn) => {
     try {
       if (isOwn) {
         await api.delete(`/messages/${messageId}?forEveryone=true`);
@@ -240,8 +257,22 @@ export default function ChatPage() {
         await api.delete(`/messages/${messageId}`);
         setMessages((prev) => prev.filter((m) => m._id !== messageId));
       }
-    } catch (_) {}
-  };
+    } catch {
+      toast.error('Failed to delete message');
+    }
+  }, [toast]);
+
+  const handleScroll = useCallback(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setShowScrollFab(distFromBottom > 300);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setShowScrollFab(false);
+  }, []);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -260,7 +291,15 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
+      {!socketConnected && (
+        <div
+          className="absolute top-0 left-0 right-0 z-20 py-1 text-center font-mono text-[10px] tracking-widest"
+          style={{ background: 'rgba(255,183,3,0.15)', color: '#FFB703', borderBottom: '1px solid #FFB70333' }}
+        >
+          ● Reconnecting...
+        </div>
+      )}
       {/* Header */}
       <div
         className="flex items-center gap-3 px-3 py-3 flex-shrink-0"
@@ -344,7 +383,11 @@ export default function ChatPage() {
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-3 py-2">
+      <div
+        ref={messagesContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto px-3 py-2 relative"
+      >
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-2 opacity-50">
             <span style={{ fontSize: 32 }}>🔐</span>
@@ -374,6 +417,22 @@ export default function ChatPage() {
           </div>
         )}
         <div ref={messagesEndRef} />
+        {showScrollFab && (
+          <button
+            type="button"
+            onClick={scrollToBottom}
+            className="fixed bottom-28 right-6 z-30 w-10 h-10 rounded-full flex items-center justify-center"
+            style={{
+              background: 'rgba(0,245,255,0.2)',
+              border: '1px solid #00F5FF',
+              boxShadow: '0 0 16px rgba(0,245,255,0.4)',
+              color: '#00F5FF',
+            }}
+            aria-label="Scroll to bottom"
+          >
+            ↓
+          </button>
+        )}
       </div>
 
       {/* Meme Panel */}

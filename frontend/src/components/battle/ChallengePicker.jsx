@@ -3,6 +3,7 @@ import api from '../../utils/api';
 import Avatar from '../ui/Avatar';
 import MemeImage from '../ui/MemeImage';
 import SkeletonGrid from '../ui/SkeletonGrid';
+import useToast from '../../hooks/useToast';
 
 export default function ChallengePicker({ friends, onClose, onSent, acceptBattle, onAccepted, preselectFriend }) {
   const [step, setStep] = useState(acceptBattle || preselectFriend ? 'meme' : 'friend');
@@ -12,6 +13,7 @@ export default function ChallengePicker({ friends, onClose, onSent, acceptBattle
   const [memes, setMemes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const { toast } = useToast();
 
   const fetchMemes = useCallback(async () => {
     setLoading(true);
@@ -43,9 +45,10 @@ export default function ChallengePicker({ friends, onClose, onSent, acceptBattle
         });
         onSent?.(data.battle);
       }
+      toast.success(acceptBattle ? 'Battle accepted!' : 'Battle challenge sent!');
       onClose?.();
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed');
+      toast.error(err.response?.data?.error || 'Failed');
     }
     setSending(false);
   };

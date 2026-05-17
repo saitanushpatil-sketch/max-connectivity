@@ -2,6 +2,7 @@ import { useState } from 'react';
 import api from '../../utils/api';
 import useAuthStore from '../../context/authStore';
 import Avatar from '../ui/Avatar';
+import useToast from '../../hooks/useToast';
 
 const buildConvId = (a, b) => [a, b].sort().join('_');
 
@@ -10,6 +11,7 @@ export default function ShareScoreButton({ message }) {
   const [open, setOpen] = useState(false);
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
   const openPicker = async () => {
     setOpen(true);
@@ -31,9 +33,9 @@ export default function ShareScoreButton({ message }) {
         type: 'text',
       });
       setOpen(false);
-      alert('Score shared to comms channel!');
+      toast.success('Score shared to comms channel!');
     } catch {
-      alert('Failed to share');
+      toast.error('Failed to share score');
     }
   };
 

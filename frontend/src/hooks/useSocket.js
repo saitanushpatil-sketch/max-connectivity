@@ -44,6 +44,9 @@ const useSocket = (handlers = {}) => {
     const handleBattleAccepted = (data) => handlersRef.current.onBattleAccepted?.(data);
     const handleBattleVoteUpdate = (data) => handlersRef.current.onBattleVoteUpdate?.(data);
     const handleBattleCompleted = (data) => handlersRef.current.onBattleCompleted?.(data);
+    const handleTttChallenge = (data) => handlersRef.current.onTttChallenge?.(data);
+    const handleTttMove = (data) => handlersRef.current.onTttMove?.(data);
+    const handleTttResult = (data) => handlersRef.current.onTttResult?.(data);
 
     on('connect', handleConnect);
     on('disconnect', handleDisconnect);
@@ -58,6 +61,9 @@ const useSocket = (handlers = {}) => {
     on('battle_accepted', handleBattleAccepted);
     on('battle_vote_update', handleBattleVoteUpdate);
     on('battle_completed', handleBattleCompleted);
+    on('ttt_challenge', handleTttChallenge);
+    on('ttt_move', handleTttMove);
+    on('ttt_result', handleTttResult);
 
     return () => {
       off('connect', handleConnect);
@@ -73,8 +79,23 @@ const useSocket = (handlers = {}) => {
       off('battle_accepted', handleBattleAccepted);
       off('battle_vote_update', handleBattleVoteUpdate);
       off('battle_completed', handleBattleCompleted);
+      off('ttt_challenge', handleTttChallenge);
+      off('ttt_move', handleTttMove);
+      off('ttt_result', handleTttResult);
     };
   }, [isAuthenticated, token]);
+
+  const emitTttChallenge = useCallback((opponentId, gameId) => {
+    socketInstance?.emit('ttt_challenge', { opponentId, gameId });
+  }, []);
+
+  const emitTttMove = useCallback((gameId, board, nextPlayer, opponentId) => {
+    socketInstance?.emit('ttt_move', { gameId, board, nextPlayer, opponentId });
+  }, []);
+
+  const emitTttResult = useCallback((gameId, winner, opponentId) => {
+    socketInstance?.emit('ttt_result', { gameId, winner, opponentId });
+  }, []);
 
   const joinConversation = useCallback((conversationId) => {
     socketInstance?.emit('join_conversation', { conversationId });
@@ -122,6 +143,10 @@ const useSocket = (handlers = {}) => {
     reactMessage,
     markRead,
     disconnect,
+    emitTttChallenge,
+    emitTttMove,
+    emitTttResult,
+    isConnected: () => socketInstance?.connected ?? false,
   };
 };
 

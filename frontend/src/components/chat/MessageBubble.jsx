@@ -12,10 +12,12 @@ const formatTime = (date) => {
 function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
   const [showActions, setShowActions] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showDownload, setShowDownload] = useState(false);
   const pressTimerRef = useRef(null);
 
   const isDeleted = message.deletedForEveryone;
   const isRead = message.readBy?.some((id) => id !== message.sender?._id && id !== message.sender);
+  const isBase64Meme = message.type === 'meme' && message.content?.startsWith?.('data:image');
   const reactionCounts = {};
   message.reactions?.forEach((r) => {
     reactionCounts[r.emoji] = r.users.length;
@@ -25,8 +27,9 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
     if (!isDeleted) {
       setShowActions(true);
       setShowEmojiPicker(false);
+      if (isBase64Meme) setShowDownload(true);
     }
-  }, [isDeleted]);
+  }, [isDeleted, isBase64Meme]);
 
   const onTouchStart = useCallback(() => {
     pressTimerRef.current = setTimeout(handleLongPress, 400);
@@ -35,6 +38,16 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
   const onTouchEnd = useCallback(() => {
     if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
   }, []);
+
+  const handleDownload = () => {
+    if (!isBase64Meme) return;
+    const link = document.createElement('a');
+    link.href = message.content;
+    link.download = `max-meme-${Date.now()}.png`;
+    link.click();
+    setShowDownload(false);
+    setShowActions(false);
+  };
 
   return (
     <div
@@ -54,7 +67,7 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
             className="text-xs px-2 py-1 mb-1 rounded-sm border-l-2 max-w-full"
             style={{ borderColor: '#00F5FF', background: 'rgba(0,245,255,0.05)', color: '#6B6B8A' }}
           >
-            <span className="block truncate">{message.replyTo.content}</span>
+            <span className="block truncate">{message.replyTo.content?.startsWith?.('data:image') ? '🎭 Meme' : message.replyTo.content}</span>
           </div>
         )}
 
@@ -70,6 +83,13 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
             <span className="italic" style={{ color: '#6B6B8A', fontSize: 13 }}>
               ⊘ This message was deleted
             </span>
+          ) : isBase64Meme ? (
+            <img
+              src={message.content}
+              alt={message.memeData?.name || 'Meme'}
+              className="rounded-sm"
+              style={{ maxWidth: 250, width: '100%', height: 'auto' }}
+            />
           ) : message.type === 'meme' ? (
             <div>
               <div className="relative rounded-sm overflow-hidden" style={{ maxHeight: 200, width: '100%', minHeight: 80 }}>
@@ -127,6 +147,16 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
             className={`flex items-center gap-1 mt-1 p-1 rounded-sm ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}
             style={{ background: '#1A1A26', border: '1px solid #252535' }}
           >
+            {showDownload && (
+              <button
+                type="button"
+                className="text-xs px-2 py-1 rounded-sm font-mono active:scale-95"
+                style={{ color: '#FFB703', fontSize: 11 }}
+                onClick={handleDownload}
+              >
+                ⬇ SAVE
+              </button>
+            )}
             <button
               type="button"
               className="text-xs px-2 py-1 rounded-sm font-mono active:scale-95"

@@ -85,7 +85,7 @@ export default function SplashScreen({ onComplete }) {
         </motion.div>
 
         <motion.div className="splash-section splash-mid" {...fadeUp(0.35)}>
-          <h1 className="splash-title">JARVIS</h1>
+          <h1 className="splash-title">MAX</h1>
           <p className="splash-subtitle">CONNECTIVITY PROTOCOL</p>
           <p className="splash-typed">
             {typed}

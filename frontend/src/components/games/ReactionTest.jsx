@@ -7,8 +7,13 @@ import hapticTap from '../../utils/haptic';
 const ROUNDS = 5;
 const MIN_DELAY = 1500;
 const MAX_DELAY = 4000;
+const CALIBRATE_MS = 900;
 
-export default function ReactionTest({ onScoreSaved }) {
+const panel = { background: '#12121A', border: '1px solid #252535' };
+
+const MEDAL = ['🥇', '🥈', '🥉'];
+
+export default function ReactionTest({ onExit, onScoreSaved }) {
   const [phase, setPhase] = useState('idle');
   const [round, setRound] = useState(0);
   const [times, setTimes] = useState([]);
@@ -43,17 +48,21 @@ export default function ReactionTest({ onScoreSaved }) {
 
   const startRound = useCallback(() => {
     clearDelay();
-    setPhase('waiting');
+    setPhase('calibrating');
     setFlash(false);
     canTapRef.current = false;
-    const delay = MIN_DELAY + Math.random() * (MAX_DELAY - MIN_DELAY);
+
     timeoutRef.current = setTimeout(() => {
-      setFlash(true);
-      setPhase('go');
-      canTapRef.current = true;
-      startRef.current = performance.now();
-      hapticTap(15);
-    }, delay);
+      setPhase('waiting');
+      const delay = MIN_DELAY + Math.random() * (MAX_DELAY - MIN_DELAY);
+      timeoutRef.current = setTimeout(() => {
+        setFlash(true);
+        setPhase('go');
+        canTapRef.current = true;
+        startRef.current = performance.now();
+        hapticTap(15);
+      }, delay);
+    }, CALIBRATE_MS);
   }, [clearDelay]);
 
   const startGame = useCallback(() => {
@@ -69,7 +78,7 @@ export default function ReactionTest({ onScoreSaved }) {
   useEffect(() => () => clearDelay(), [clearDelay]);
 
   const handleTap = async () => {
-    if (phase === 'waiting') {
+    if (phase === 'waiting' || phase === 'calibrating') {
       clearDelay();
       canTapRef.current = false;
       setPhase('false');
@@ -112,9 +121,9 @@ export default function ReactionTest({ onScoreSaved }) {
   };
 
   return (
-    <div className="p-4 rounded-sm" style={{ background: '#12121A', border: '1px solid #252535' }}>
+    <div className="p-4 rounded-sm" style={panel}>
       <p className="font-mono text-[10px] mb-3" style={{ color: '#6B6B8A' }}>
-        // REACTION PROTOCOL — 1500–4000ms RANDOM DELAY
+        // MAX REACTION PROTOCOL — 1500–4000ms RANDOM DELAY
       </p>
 
       <button
@@ -130,6 +139,11 @@ export default function ReactionTest({ onScoreSaved }) {
         {phase === 'idle' && (
           <span className="font-heading text-xl" style={{ color: '#00F5FF' }}>
             INITIATE TEST
+          </span>
+        )}
+        {phase === 'calibrating' && (
+          <span className="font-mono text-sm animate-pulse" style={{ color: '#FFB703' }}>
+            MAX CALIBRATING...
           </span>
         )}
         {phase === 'waiting' && (
@@ -155,7 +169,7 @@ export default function ReactionTest({ onScoreSaved }) {
         {phase === 'done' && result && (
           <div className="text-center">
             <span className="font-mono text-xs block" style={{ color: '#6B6B8A' }}>
-              JARVIS RESPONSE TIME
+              MAX RESPONSE TIME
             </span>
             <span className="font-heading text-3xl font-bold" style={{ color: '#00F5FF' }}>
               <CountUp value={displayAvg || result.avgMs} suffix="ms" duration={1400} />
@@ -172,7 +186,7 @@ export default function ReactionTest({ onScoreSaved }) {
 
       {phase === 'done' && result && (
         <>
-          <ShareScoreButton message={`⚡ JARVIS RESPONSE TIME: ${result.avgMs}ms avg on MAX Connectivity`} />
+          <ShareScoreButton message={`⚡ MAX RESPONSE TIME: ${result.avgMs}ms avg on MAX Connectivity`} />
           <button
             type="button"
             onClick={startGame}
@@ -184,21 +198,34 @@ export default function ReactionTest({ onScoreSaved }) {
       )}
 
       {leaderboard.length > 0 && (
-        <div className="mt-4 pt-3" style={{ borderTop: '1px solid #252535' }}>
-          <p className="font-mono text-[10px] mb-2" style={{ color: '#6B6B8A' }}>
-            // GLOBAL TOP 10
+        <div className="mt-4 pt-3 rounded-sm" style={{ background: '#0A0A0F', border: '1px solid #252535' }}>
+          <p className="font-mono text-[10px] mb-3 px-1" style={{ color: '#00F5FF' }}>
+            // MAX GLOBAL LEADERBOARD
           </p>
           {leaderboard.map((e, i) => (
-            <div key={e._id || `${e.username}-${i}`} className="flex justify-between py-1.5 font-mono text-[10px]">
-              <span className="truncate pr-2" style={{ color: '#E8E8FF' }}>
-                #{i + 1} {e.displayName || e.username}
+            <div
+              key={e._id || `${e.username}-${i}`}
+              className="flex items-center justify-between py-2 px-2 rounded-sm mb-1"
+              style={{ background: i < 3 ? 'rgba(0,245,255,0.06)' : 'transparent' }}
+            >
+              <span className="truncate pr-2 font-mono text-[10px] flex items-center gap-1" style={{ color: '#E8E8FF' }}>
+                <span style={{ color: i < 3 ? '#FFB703' : '#6B6B8A', minWidth: 20 }}>
+                  {i < 3 ? MEDAL[i] : `#${i + 1}`}
+                </span>
+                {e.displayName || e.username}
               </span>
-              <span className="flex-shrink-0" style={{ color: '#00F5FF' }}>
+              <span className="flex-shrink-0 font-mono text-[10px] font-bold" style={{ color: '#00F5FF' }}>
                 {e.avgMs}ms
               </span>
             </div>
           ))}
         </div>
+      )}
+
+      {onExit && (
+        <button type="button" onClick={onExit} className="w-full mt-3 font-mono text-[10px]" style={{ color: '#6B6B8A' }}>
+          EXIT
+        </button>
       )}
     </div>
   );

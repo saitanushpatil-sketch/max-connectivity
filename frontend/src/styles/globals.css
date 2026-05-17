@@ -349,7 +349,8 @@ html, body {
   height: 4px;
   background: var(--cyan);
   border-radius: 50%;
-  box-shadow: 0 0 6px var(--cyan);
+  box-shadow: 0 0 8px var(--cyan), 0 0 16px rgba(0, 245, 255, 0.5);
+  animation: navDotPulse 2s ease-in-out infinite;
 }
 
 /* Holographic shimmer on hover */
@@ -468,7 +469,39 @@ button:active:not(:disabled) {
 
 .nav-link-active {
   transform: translateY(-2px);
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.nav-link-active svg {
+  filter: drop-shadow(0 0 8px #00F5FF);
+  transition: filter 0.2s ease;
+}
+
+@keyframes navDotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.2); }
+}
+
+.skeleton-pulse {
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+.hud-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(0, 245, 255, 0.2);
+  border-top-color: #00F5FF;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .empty-hud-text {

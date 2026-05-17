@@ -4,6 +4,9 @@ import Avatar from '../components/ui/Avatar';
 import BottomNav from '../components/ui/BottomNav';
 import PullToRefresh from '../components/ui/PullToRefresh';
 import api from '../utils/api';
+import { SkeletonRow } from '../components/ui/Skeleton';
+import useToast from '../hooks/useToast';
+import HudButton from '../components/ui/HudButton';
 import useAuthStore from '../context/authStore';
 
 const buildConvId = (a, b) => [a, b].sort().join('_');
@@ -16,6 +19,8 @@ export default function Friends() {
   const [incoming, setIncoming] = useState([]);
   const [outgoing, setOutgoing] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(null);
+  const { toast } = useToast();
 
   const fetchAll = async () => {
     setLoading(true);
@@ -31,10 +36,15 @@ export default function Friends() {
   useEffect(() => { fetchAll(); }, []);
 
   const respond = async (requestId, action) => {
+    setActionLoading(requestId);
     try {
       await api.put('/friends/respond', { requestId, action });
+      toast.success(action === 'accept' ? 'Friend request accepted' : 'Request declined');
       fetchAll();
-    } catch (_) {}
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to respond');
+    }
+    setActionLoading(null);
   };
 
   const removeFriend = async (friendId) => {
@@ -76,7 +86,11 @@ export default function Friends() {
 
       <PullToRefresh onRefresh={fetchAll} className="flex-1">
         {loading ? (
-          <div className="flex justify-center py-16"><div className="flex gap-1"><span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" /></div></div>
+          <>
+            {[0, 1, 2, 3].map((i) => (
+              <SkeletonRow key={i} />
+            ))}
+          </>
         ) : tab === 'friends' ? (
           friends.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 gap-3">
@@ -105,6 +119,13 @@ export default function Friends() {
                     style={{ background: 'rgba(255,0,110,0.1)', border: '1px solid rgba(255,0,110,0.35)', color: '#FF006E' }}
                   >
                     ⚔️
+                  </button>
+                  <button
+                    onClick={() => router.push({ pathname: '/games', query: { game: 'ttt', opponent: f._id, name: f.displayName || f.username } })}
+                    className="hud-btn px-2 py-1.5 rounded-sm text-[10px]"
+                    style={{ background: 'rgba(0,245,255,0.1)', border: '1px solid rgba(0,245,255,0.35)', color: '#00F5FF' }}
+                  >
+                    ⭕
                   </button>
                   <button
                     onClick={() => removeFriend(f._id)}

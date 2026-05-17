@@ -1,22 +1,32 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { SessionProvider } from 'next-auth/react';
+import { AnimatePresence, motion } from 'framer-motion';
 import useAuthStore from '../context/authStore';
 import SplashScreen from '../components/ui/SplashScreen';
 import PushNotificationInit from '../components/PushNotificationInit';
+import { ToastProvider } from '../hooks/useToast';
+import ToastContainer from '../components/ui/Toast';
 import '../styles/globals.css';
 
 const PUBLIC_ROUTES = ['/login', '/signup', '/offline', '/auth/google-sync', '/search'];
 const SPLASH_KEY = 'max_splash_seen';
 
+const pageVariants = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: 8 },
+};
+
 export default function App({ Component, pageProps }) {
   const router = useRouter();
   const { init, isAuthenticated, isLoading } = useAuthStore();
   const [showSplash, setShowSplash] = useState(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
     init();
-  }, []);
+  }, [init]);
 
   useEffect(() => {
     try {
@@ -33,13 +43,19 @@ export default function App({ Component, pageProps }) {
     if (!isAuthenticated && !isPublic) {
       router.replace('/login');
     }
-  }, [isAuthenticated, isLoading, router.pathname, showSplash]);
+  }, [isAuthenticated, isLoading, router, showSplash]);
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
   }, []);
+
+  useEffect(() => {
+    const onRoute = () => setIsInitialLoad(false);
+    router.events.on('routeChangeComplete', onRoute);
+    return () => router.events.off('routeChangeComplete', onRoute);
+  }, [router.events]);
 
   const handleSplashComplete = () => {
     try {
@@ -48,13 +64,14 @@ export default function App({ Component, pageProps }) {
       /* ignore */
     }
     setShowSplash(false);
+    setIsInitialLoad(false);
   };
 
   if (showSplash === null) {
     return <div className="fixed inset-0" style={{ background: '#0A0A0F' }} />;
   }
 
-  if (showSplash) {
+  if (showSplash && isInitialLoad) {
     return <SplashScreen onComplete={handleSplashComplete} />;
   }
 
@@ -88,12 +105,27 @@ export default function App({ Component, pageProps }) {
 
   return (
     <SessionProvider>
-      <PushNotificationInit />
-      <div className="fixed inset-0 flex justify-center" style={{ background: '#0A0A0F' }}>
-        <div className="relative w-full max-w-app h-full flex flex-col overflow-hidden hud-bg scan-line-container">
-          <Component {...pageProps} />
+      <ToastProvider>
+        <PushNotificationInit />
+        <ToastContainer />
+        <div className="fixed inset-0 flex justify-center" style={{ background: '#0A0A0F' }}>
+          <div className="relative w-full max-w-app h-full flex flex-col overflow-hidden hud-bg scan-line-container">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={router.pathname}
+                variants={pageVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.2 }}
+                className="flex flex-col flex-1 min-h-0 overflow-hidden"
+              >
+                <Component {...pageProps} />
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
-      </div>
+      </ToastProvider>
     </SessionProvider>
   );
 }
