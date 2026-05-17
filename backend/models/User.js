@@ -20,11 +20,18 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     match: [/^\S+@\S+\.\S+$/, 'Invalid email format'],
   },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
   password: {
     type: String,
-    required: true,
     minlength: 6,
     select: false,
+    required: function () {
+      return !this.googleId;
+    },
   },
   displayName: {
     type: String,
@@ -71,7 +78,7 @@ const userSchema = new mongoose.Schema({
 
 // Hash password before save
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
+  if (!this.isModified('password') || !this.password) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });

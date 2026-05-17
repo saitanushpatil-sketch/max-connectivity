@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import useAuthStore from '../context/authStore';
+import GoogleLoginButton from '../components/auth/GoogleLoginButton';
 
 const COLORS = ['#00F5FF', '#FF006E', '#06D6A0', '#FFB703', '#8B5CF6', '#F97316', '#EC4899'];
 
@@ -146,6 +147,14 @@ export default function Signup() {
                 </span>
               ) : 'CREATE OPERATOR'}
             </button>
+
+            <div className="flex items-center gap-3 my-1">
+              <div style={{ flex: 1, height: 1, background: '#252535' }} />
+              <span className="font-mono text-[10px] tracking-widest" style={{ color: '#6B6B8A' }}>OR</span>
+              <div style={{ flex: 1, height: 1, background: '#252535' }} />
+            </div>
+
+            <GoogleLoginButton />
           </form>
 
           <div className="mt-4 pt-4" style={{ borderTop: '1px solid #252535' }}>

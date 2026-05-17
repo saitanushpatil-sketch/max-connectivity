@@ -5,6 +5,27 @@ const generateToken = (userId) => {
   return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
 
+const baseUsernameFromName = (name) => {
+  const base = (name || 'operator')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '')
+    .slice(0, 15);
+  return base.length >= 3 ? base : 'operator';
+};
+
+const uniqueUsername = async (name) => {
+  const base = baseUsernameFromName(name);
+  let username = base;
+  let attempt = 0;
+  while (await User.findOne({ username })) {
+    attempt += 1;
+    username = `${base.slice(0, 15)}${attempt}`.slice(0, 20);
+  }
+  return username;
+};
+
 // POST /api/auth/signup
 exports.signup = async (req, res) => {
   try {
@@ -94,6 +115,62 @@ exports.login = async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Server error during login' });
+  }
+};
+
+// POST /api/auth/google
+exports.googleAuth = async (req, res) => {
+  try {
+    const { email, name, googleId } = req.body;
+    if (!email || !googleId) {
+      return res.status(400).json({ error: 'Email and googleId are required' });
+    }
+
+    const normalizedEmail = email.toLowerCase();
+    let user = await User.findOne({
+      $or: [{ email: normalizedEmail }, { googleId }],
+    });
+
+    if (!user) {
+      const username = await uniqueUsername(name);
+      user = new User({
+        username,
+        email: normalizedEmail,
+        displayName: name || username,
+        avatarColor: '#00F5FF',
+        googleId,
+      });
+
+      const count = await User.countDocuments();
+      if (count === 0) user.badges = ['early_adopter'];
+
+      await user.save();
+    } else {
+      if (!user.googleId) user.googleId = googleId;
+      if (name && !user.displayName) user.displayName = name;
+    }
+
+    user.status = 'online';
+    user.lastSeen = new Date();
+    user.updateStreak();
+    user.checkBadges();
+    await user.save();
+
+    const token = generateToken(user._id);
+    res.json({
+      token,
+      user: user.toPublicJSON(),
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ error: 'Account conflict — try again' });
+    }
+    if (error.name === 'ValidationError') {
+      const msg = Object.values(error.errors)[0].message;
+      return res.status(400).json({ error: msg });
+    }
+    console.error('Google auth error:', error);
+    res.status(500).json({ error: 'Server error during Google authentication' });
   }
 };
 

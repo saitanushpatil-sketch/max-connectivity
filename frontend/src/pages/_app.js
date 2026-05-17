@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { SessionProvider } from 'next-auth/react';
 import useAuthStore from '../context/authStore';
 import '../styles/globals.css';
 
-const PUBLIC_ROUTES = ['/login', '/signup', '/offline'];
+const PUBLIC_ROUTES = ['/login', '/signup', '/offline', '/auth/google-sync'];
 
 export default function App({ Component, pageProps }) {
   const router = useRouter();
@@ -56,10 +57,12 @@ export default function App({ Component, pageProps }) {
   }
 
   return (
-    <div className="fixed inset-0 flex justify-center" style={{ background: '#0A0A0F' }}>
-      <div className="relative w-full max-w-app h-full flex flex-col overflow-hidden hud-bg scan-line-container">
-        <Component {...pageProps} />
+    <SessionProvider>
+      <div className="fixed inset-0 flex justify-center" style={{ background: '#0A0A0F' }}>
+        <div className="relative w-full max-w-app h-full flex flex-col overflow-hidden hud-bg scan-line-container">
+          <Component {...pageProps} />
+        </div>
       </div>
-    </div>
+    </SessionProvider>
   );
 }

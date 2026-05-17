@@ -43,6 +43,12 @@ const useAuthStore = create((set, get) => ({
     return data.user;
   },
 
+  setGoogleSession: (token, user) => {
+    localStorage.setItem('max_token', token);
+    localStorage.setItem('max_user', JSON.stringify(user));
+    set({ user, token, isAuthenticated: true, isLoading: false });
+  },
+
   logout: () => {
     localStorage.removeItem('max_token');
     localStorage.removeItem('max_user');

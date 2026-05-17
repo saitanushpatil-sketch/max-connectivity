@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import useAuthStore from '../context/authStore';
+import GoogleLoginButton from '../components/auth/GoogleLoginButton';
 
 export default function Login() {
   const router = useRouter();
@@ -9,6 +10,12 @@ export default function Login() {
   const [form, setForm] = useState({ identifier: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (router.query.error) {
+      setError(decodeURIComponent(router.query.error));
+    }
+  }, [router.query.error]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -102,6 +109,14 @@ export default function Login() {
                 </span>
               ) : 'AUTHENTICATE'}
             </button>
+
+            <div className="flex items-center gap-3 my-1">
+              <div style={{ flex: 1, height: 1, background: '#252535' }} />
+              <span className="font-mono text-[10px] tracking-widest" style={{ color: '#6B6B8A' }}>OR</span>
+              <div style={{ flex: 1, height: 1, background: '#252535' }} />
+            </div>
+
+            <GoogleLoginButton />
           </form>
 
           <div className="mt-6 pt-4" style={{ borderTop: '1px solid #252535' }}>
