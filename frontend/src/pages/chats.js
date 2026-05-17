@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import useAuthStore from '../context/authStore';
@@ -63,13 +63,26 @@ export default function Chats() {
     },
   });
 
-  const sortedFriends = [...friends].sort((a, b) => {
-    const convA = buildConvId(user._id, a._id);
-    const convB = buildConvId(user._id, b._id);
-    const timeA = lastMessages[convA]?.createdAt ? new Date(lastMessages[convA].createdAt).getTime() : 0;
-    const timeB = lastMessages[convB]?.createdAt ? new Date(lastMessages[convB].createdAt).getTime() : 0;
-    return timeB - timeA;
-  });
+  const sortedFriends = useMemo(() => {
+    if (!user?._id) return [];
+    return [...friends].sort((a, b) => {
+      const convA = buildConvId(user._id, a._id);
+      const convB = buildConvId(user._id, b._id);
+      const timeA = lastMessages[convA]?.createdAt ? new Date(lastMessages[convA].createdAt).getTime() : 0;
+      const timeB = lastMessages[convB]?.createdAt ? new Date(lastMessages[convB].createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+  }, [friends, lastMessages, user?._id]);
+
+  const friendList = useMemo(() => {
+    if (!user?._id) return [];
+    return sortedFriends.map((friend) => {
+      const convId = buildConvId(user._id, friend._id);
+      const last = lastMessages[convId];
+      const unread = unreadCounts[convId] || 0;
+      return { friend, convId, last, unread };
+    });
+  }, [sortedFriends, lastMessages, unreadCounts, user?._id]);
 
   return (
     <div className="flex flex-col h-full pb-16">
@@ -96,7 +109,7 @@ export default function Chats() {
           <div className="flex items-center justify-center h-32">
             <div className="flex gap-1"><span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" /></div>
           </div>
-        ) : sortedFriends.length === 0 ? (
+        ) : friendList.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 gap-4 px-8 text-center">
             <div className="w-16 h-16 flex items-center justify-center rounded-sm" style={{ border: '1px solid #252535', background: '#12121A' }}>
               <span style={{ fontSize: 28 }}>💬</span>
@@ -110,11 +123,7 @@ export default function Chats() {
             </Link>
           </div>
         ) : (
-          sortedFriends.map((friend) => {
-            const convId = buildConvId(user._id, friend._id);
-            const last = lastMessages[convId];
-            const unread = unreadCounts[convId] || 0;
-            return (
+          friendList.map(({ friend, convId, last, unread }) => (
               <Link
                 key={friend._id}
                 href={`/chat/${convId}`}
@@ -147,8 +156,7 @@ export default function Chats() {
                   </div>
                 </div>
               </Link>
-            );
-          })
+          ))
         )}
       </div>
       <BottomNav />

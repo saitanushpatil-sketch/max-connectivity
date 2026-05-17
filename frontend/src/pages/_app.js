@@ -67,7 +67,7 @@ export default function App({ Component, pageProps }) {
               border: '2px solid #00F5FF',
               color: '#00F5FF',
               boxShadow: '0 0 30px rgba(0,245,255,0.4)',
-              animation: 'glowPulse 1.5s ease-in-out infinite',
+              animation: 'glowPulse 3s ease-in-out infinite',
             }}
           >
             MAX

@@ -24,6 +24,13 @@
   padding: 0;
 }
 
+button,
+.hud-btn,
+input[type="button"],
+input[type="submit"] {
+  touch-action: manipulation;
+}
+
 html, body {
   height: 100%;
   background: var(--bg);
@@ -97,6 +104,18 @@ html, body {
   border-width: 0 2px 2px 0;
 }
 
+/* GPU / animation performance */
+.typing-dot,
+.online-pulse,
+.meme-panel-enter,
+.animate-fade-in,
+.scan-line-container::after,
+.holo-hover::before,
+.e2e-shield-pulse,
+.meme-skeleton {
+  will-change: transform;
+}
+
 /* Typing indicator dots */
 .typing-dot {
   width: 6px;
@@ -105,6 +124,7 @@ html, body {
   background: var(--cyan);
   display: inline-block;
   animation: bounceDot 1.4s infinite ease-in-out;
+  transform: translateZ(0);
 }
 .typing-dot:nth-child(1) { animation-delay: 0s; }
 .typing-dot:nth-child(2) { animation-delay: 0.2s; }
@@ -161,6 +181,12 @@ html, body {
 .hud-btn-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
 
 /* Message bubble */
+.bubble-own,
+.bubble-other {
+  contain: layout style;
+  transform: translateZ(0);
+}
+
 .bubble-own {
   background: linear-gradient(135deg, rgba(0, 245, 255, 0.15) 0%, rgba(0, 153, 204, 0.1) 100%);
   border: 1px solid rgba(0, 245, 255, 0.3);
@@ -170,11 +196,16 @@ html, body {
   border: 1px solid var(--border);
 }
 
+.message-bubble-row {
+  contain: layout style;
+  transform: translateZ(0);
+}
+
 /* Online dot pulse */
 .online-pulse {
   background: var(--green);
   box-shadow: 0 0 0 0 rgba(6, 214, 160, 0.4);
-  animation: onlinePulse 2s infinite;
+  animation: onlinePulse 2.5s infinite;
 }
 @keyframes onlinePulse {
   0% { box-shadow: 0 0 0 0 rgba(6, 214, 160, 0.4); }
@@ -195,7 +226,8 @@ html, body {
   right: 0;
   height: 2px;
   background: linear-gradient(90deg, transparent, rgba(0, 245, 255, 0.2), transparent);
-  animation: scanLine 4s linear infinite;
+  animation: scanLine 6s linear infinite;
+  will-change: transform;
   pointer-events: none;
 }
 @keyframes scanLine {
@@ -233,6 +265,7 @@ html, body {
 /* Page transition wrapper */
 .page-enter {
   animation: pageEnter 0.25s ease-out;
+  will-change: transform, opacity;
 }
 @keyframes pageEnter {
   from { opacity: 0; transform: translateY(8px); }
@@ -242,6 +275,68 @@ html, body {
 /* Meme panel slide */
 .meme-panel-enter {
   animation: memePanelEnter 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  transform: translateZ(0);
+}
+
+/* Meme grid loading skeleton */
+.meme-skeleton {
+  background: linear-gradient(
+    90deg,
+    #12121a 0%,
+    #1a1a26 50%,
+    #12121a 100%
+  );
+  background-size: 200% 100%;
+  border: 1px solid #252535;
+  animation: memeSkeletonShimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes memeSkeletonShimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* E2E encryption badge */
+.e2e-shield-pulse {
+  animation: e2eShieldPulse 2.5s ease-in-out infinite;
+  transform: translateZ(0);
+}
+
+@keyframes e2eShieldPulse {
+  0%, 100% {
+    opacity: 0.7;
+    filter: drop-shadow(0 0 2px rgba(6, 214, 160, 0.3));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(6, 214, 160, 0.7));
+  }
+}
+
+.e2e-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 220px;
+  padding: 10px 12px;
+  background: #12121a;
+  border: 1px solid #00f5ff;
+  border-radius: 2px;
+  box-shadow: 0 0 20px rgba(0, 245, 255, 0.15);
+  z-index: 50;
+}
+
+.e2e-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: 14px;
+  width: 8px;
+  height: 8px;
+  background: #12121a;
+  border-left: 1px solid #00f5ff;
+  border-top: 1px solid #00f5ff;
+  transform: rotate(45deg);
 }
 @keyframes memePanelEnter {
   from { transform: translateY(100%); }

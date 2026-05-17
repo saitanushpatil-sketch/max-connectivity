@@ -31,7 +31,10 @@ export default function ChatPage() {
 
   const messagesEndRef = useRef(null);
   const typingTimerRef = useRef(null);
+  const lastTypingEmitRef = useRef(0);
   const inputRef = useRef(null);
+  const e2eRef = useRef(null);
+  const [showE2ETooltip, setShowE2ETooltip] = useState(false);
 
   // Derive friendId from convId
   const friendId = convId ? convId.split('_').find((id) => id !== user?._id) : null;
@@ -108,6 +111,21 @@ export default function ChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [messages.length, loading]);
+
+  useEffect(() => {
+    if (!showE2ETooltip) return;
+    const handleOutside = (e) => {
+      if (e2eRef.current && !e2eRef.current.contains(e.target)) {
+        setShowE2ETooltip(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('touchstart', handleOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('touchstart', handleOutside);
+    };
+  }, [showE2ETooltip]);
 
   const handleSendText = async () => {
     if (!input.trim() || sending) return;
@@ -191,9 +209,14 @@ export default function ChatPage() {
 
   const handleInputChange = (e) => {
     setInput(e.target.value);
+    const now = Date.now();
     if (!isTyping) {
       setIsTyping(true);
       emitTypingStart(convId, friendId);
+      lastTypingEmitRef.current = now;
+    } else if (now - lastTypingEmitRef.current >= 500) {
+      emitTypingStart(convId, friendId);
+      lastTypingEmitRef.current = now;
     }
     clearTimeout(typingTimerRef.current);
     typingTimerRef.current = setTimeout(() => {
@@ -266,8 +289,38 @@ export default function ChatPage() {
             </span>
           </div>
         </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
         <div className="font-mono text-[10px] tracking-widest px-2 py-1 rounded-sm" style={{ background: '#1A1A26', border: '1px solid #252535', color: '#6B6B8A' }}>
           SECURE
+        </div>
+        <div ref={e2eRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setShowE2ETooltip((v) => !v)}
+            className="flex items-center gap-1 px-2 py-1 rounded-sm"
+            style={{ background: 'rgba(6,214,160,0.08)', border: '1px solid rgba(6,214,160,0.25)' }}
+            aria-label="End-to-end encryption info"
+            aria-expanded={showE2ETooltip}
+          >
+            <svg width="10" height="12" viewBox="0 0 10 12" fill="none" aria-hidden="true" style={{ color: '#06D6A0' }}>
+              <rect x="1" y="5" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="1.2" />
+              <path d="M3 5V3.5C3 2.12 4.12 1 5.5 1C6.88 1 8 2.12 8 3.5V5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
+            <span className="font-mono text-[8px] tracking-wider whitespace-nowrap" style={{ color: '#06D6A0' }}>
+              END-TO-END ENCRYPTED
+            </span>
+            <svg className="e2e-shield-pulse flex-shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: '#06D6A0' }}>
+              <path d="M12 2L4 6V11C4 16.5 7.8 21.2 12 22C16.2 21.2 20 16.5 20 11V6L12 2Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+            </svg>
+          </button>
+          {showE2ETooltip && (
+            <div className="e2e-tooltip" role="tooltip">
+              <p className="font-mono text-[10px] leading-relaxed" style={{ color: '#E8E8FF' }}>
+                Messages are secured with AES-256 encryption. Only you and the recipient can read them.
+              </p>
+            </div>
+          )}
+        </div>
         </div>
       </div>
 

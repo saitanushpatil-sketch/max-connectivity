@@ -100,12 +100,10 @@ export default function MemePanel({ searchQuery = '', onSelect, onClose }) {
       {/* Grid */}
       <div className="flex-1 overflow-y-auto px-3 pb-3">
         {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="flex gap-1">
-              <span className="typing-dot" />
-              <span className="typing-dot" />
-              <span className="typing-dot" />
-            </div>
+          <div className="grid grid-cols-3 gap-2">
+            {Array.from({ length: 9 }, (_, i) => (
+              <div key={i} className="meme-skeleton aspect-square rounded-sm" />
+            ))}
           </div>
         ) : memes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2">
@@ -125,7 +123,10 @@ export default function MemePanel({ searchQuery = '', onSelect, onClose }) {
                   src={meme.url}
                   alt={meme.name}
                   className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                  style={{ transform: 'translateZ(0)' }}
                   loading="lazy"
+                  decoding="async"
+                  fetchPriority="low"
                 />
                 <div
                   className="absolute inset-0 flex items-end opacity-0 group-hover:opacity-100 transition-opacity p-1"

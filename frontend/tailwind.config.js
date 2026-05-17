@@ -30,7 +30,7 @@ module.exports = {
       },
       animation: {
         'bounce-dot': 'bounceDot 1.4s infinite ease-in-out',
-        'glow-pulse': 'glowPulse 2s ease-in-out infinite',
+        'glow-pulse': 'glowPulse 3s ease-in-out infinite',
         'slide-up': 'slideUp 0.3s ease-out',
         'fade-in': 'fadeIn 0.2s ease-out',
         'scan-line': 'scanLine 3s linear infinite',

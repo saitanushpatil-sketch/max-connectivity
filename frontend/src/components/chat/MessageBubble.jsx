@@ -27,7 +27,7 @@ export default function MessageBubble({ message, isOwn, onReact, onReply, onDele
 
   return (
     <div
-      className={`flex items-end gap-2 mb-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'} animate-fade-in relative`}
+      className={`message-bubble-row flex items-end gap-2 mb-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'} animate-fade-in relative`}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
       onContextMenu={(e) => { e.preventDefault(); handleLongPress(); }}
@@ -61,8 +61,10 @@ export default function MessageBubble({ message, isOwn, onReact, onReply, onDele
                 src={message.memeData?.url}
                 alt={message.memeData?.name || 'Meme'}
                 className="rounded-sm max-w-full"
-                style={{ maxHeight: 200, width: 'auto', display: 'block' }}
+                style={{ maxHeight: 200, width: 'auto', display: 'block', transform: 'translateZ(0)' }}
                 loading="lazy"
+                decoding="async"
+                fetchPriority="low"
               />
               {message.memeData?.name && (
                 <span className="block mt-1 font-mono text-[10px]" style={{ color: '#6B6B8A' }}>{message.memeData.name}</span>
