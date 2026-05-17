@@ -16,13 +16,7 @@ const app = express();
 const server = http.createServer(app);
 
 const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    if (origin.endsWith('.vercel.app')) return callback(null, true);
-    if (origin.includes('localhost')) return callback(null, true);
-    if (origin === process.env.CLIENT_URL) return callback(null, true);
-    return callback(null, true);
-  },
+  origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -33,7 +27,7 @@ app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-app.get('/health', (req, res) => res.json({ status: 'MAX Connectivity API running' }));
+app.get('/health', (req, res) => res.json({ status: 'MAX Connectivity API running', port: process.env.PORT }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -44,7 +38,7 @@ app.use('/api/memes', memeRoutes);
 app.use((req, res) => res.status(404).json({ error: 'Route not found' }));
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
+  res.status(500).json({ error: err.message || 'Internal server error' });
 });
 
 const io = new Server(server, {
@@ -55,7 +49,7 @@ const io = new Server(server, {
 initSocket(io);
 
 connectDB().then(() => {
-  const PORT = process.env.PORT || 5000;
+  const PORT = process.env.PORT || 8080;
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 MAX Connectivity server running on port ${PORT}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
