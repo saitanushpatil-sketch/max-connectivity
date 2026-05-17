@@ -9,6 +9,7 @@ import Avatar from '../../components/ui/Avatar';
 import api from '../../utils/api';
 
 const buildConvId = (a, b) => [a, b].sort().join('_');
+const MESSAGE_MAX_LENGTH = 2000;
 
 export default function ChatPage() {
   const router = useRouter();
@@ -355,15 +356,26 @@ export default function ChatPage() {
           </button>
 
           {/* Text input */}
-          <input
-            ref={inputRef}
-            className="hud-input flex-1 px-3 py-2.5 rounded-sm text-sm"
-            placeholder="TRANSMIT MESSAGE..."
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            style={{ fontSize: 14 }}
-          />
+          <div className="flex-1 min-w-0 flex flex-col">
+            <input
+              ref={inputRef}
+              className="hud-input w-full px-3 py-2.5 rounded-sm text-sm"
+              placeholder="TRANSMIT MESSAGE..."
+              value={input}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              maxLength={MESSAGE_MAX_LENGTH}
+              style={{ fontSize: 14 }}
+            />
+            <div className="flex justify-end mt-1 px-1">
+              <span
+                className="font-mono text-[10px] tracking-widest"
+                style={{ color: input.length >= MESSAGE_MAX_LENGTH ? '#FF006E' : '#6B6B8A' }}
+              >
+                {input.length}/{MESSAGE_MAX_LENGTH}
+              </span>
+            </div>
+          </div>
 
           {/* Send button */}
           <button
