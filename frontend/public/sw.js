@@ -26,19 +26,34 @@ self.addEventListener('push', (event) => {
   try {
     payload = event.data ? event.data.json() : {};
   } catch (_) {
-    payload = { title: 'MAX', body: event.data?.text() || 'New message' };
+    payload = { title: 'MAX', body: event.data?.text() || 'New notification' };
   }
 
   const title = payload.title || 'MAX Connectivity';
   const data = payload.data || {};
+  const type = payload.type || 'message';
+
   const options = {
     body: payload.body || '',
-    icon: payload.icon || '/icon-192.png',
-    badge: payload.badge || '/icon-192.png',
-    tag: data.conversationId || 'max-message',
-    data,
-    vibrate: [100, 50, 100],
-    requireInteraction: false,
+    icon: '/icon-192.png',
+    badge: '/badge-72.png',
+    vibrate: [100, 50, 100, 50, 100],
+    requireInteraction: type === 'call',
+    tag: data.conversationId || 'max-notification',
+    renotify: true,
+    actions: type === 'message' ? [
+      { action: 'reply', title: '💬 Reply' },
+      { action: 'open', title: '📱 Open' }
+    ] : [
+      { action: 'accept', title: '✅ Accept' },
+      { action: 'decline', title: '❌ Decline' }
+    ],
+    data: {
+      url: data.url || '/chats',
+      conversationId: data.conversationId,
+      type
+    },
+    silent: false
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
@@ -46,7 +61,18 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = event.notification.data?.url || '/chats';
+  
+  const data = event.notification.data || {};
+  let targetUrl = data.url || '/chats';
+
+  if (event.action === 'reply') {
+    targetUrl += '?focus=input';
+  } else if (event.action === 'accept') {
+    targetUrl = `/call/${data.conversationId}`;
+  } else if (event.action === 'decline') {
+    // Just close the notification (done above)
+    return;
+  }
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
@@ -68,7 +94,8 @@ self.addEventListener('notificationclick', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  if (event.request.url.includes('/api/') || event.request.url.includes('socket.io')) return;
+  if (event.request.url.includes('/api/')) return;
+  if (event.request.url.includes('socket.io')) return;
 
   event.respondWith(
     fetch(event.request)

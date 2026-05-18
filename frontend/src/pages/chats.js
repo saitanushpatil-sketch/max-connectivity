@@ -8,6 +8,8 @@ import PullToRefresh from '../components/ui/PullToRefresh';
 import Avatar from '../components/ui/Avatar';
 import api from '../utils/api';
 import { SkeletonRow } from '../components/ui/Skeleton';
+import useNotificationStore from '../context/notificationStore';
+import NotificationCenter from '../components/ui/NotificationCenter';
 
 const buildConvId = (a, b) => [a, b].sort().join('_');
 const timeAgo = (date) => {
@@ -28,6 +30,12 @@ export default function Chats() {
   const [lastMessages, setLastMessages] = useState({});
   const [unreadCounts, setUnreadCounts] = useState({});
   const [loading, setLoading] = useState(true);
+  const [showNotificationCenter, setShowNotificationCenter] = useState(false);
+  const { unreadCount, initNotifications } = useNotificationStore();
+
+  useEffect(() => {
+    initNotifications();
+  }, [initNotifications]);
 
   const fetchFriends = useCallback(async () => {
     try {
@@ -97,13 +105,34 @@ export default function Chats() {
               COMMS
             </h1>
           </div>
-          <Link href="/search" className="w-9 h-9 flex items-center justify-center rounded-sm" style={{ background: '#1A1A26', border: '1px solid #252535' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00F5FF" strokeWidth="1.8" strokeLinecap="round">
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { hapticTap(10); setShowNotificationCenter(true); }}
+              className="w-9 h-9 flex items-center justify-center rounded-sm relative"
+              style={{ background: '#1A1A26', border: '1px solid #252535' }}
+            >
+              <span style={{ fontSize: 16 }}>🔔</span>
+              {unreadCount > 0 && (
+                <span 
+                  className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#FF006E] shadow-[0_0_6px_#FF006E]" 
+                />
+              )}
+            </button>
+            <Link href="/search" className="w-9 h-9 flex items-center justify-center rounded-sm" style={{ background: '#1A1A26', border: '1px solid #252535' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00F5FF" strokeWidth="1.8" strokeLinecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </Link>
+          </div>
         </div>
       </div>
+
+      {showNotificationCenter && (
+        <NotificationCenter
+          onClose={() => setShowNotificationCenter(false)}
+          onNavigate={(url) => router.push(url)}
+        />
+      )}
 
       <PullToRefresh onRefresh={fetchFriends} className="flex-1">
         {loading ? (

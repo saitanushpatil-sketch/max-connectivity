@@ -43,6 +43,12 @@ const useSocket = (handlers = {}) => {
     const handleTttChallenge = (data) => handlersRef.current.onTttChallenge?.(data);
     const handleTttMove = (data) => handlersRef.current.onTttMove?.(data);
     const handleTttResult = (data) => handlersRef.current.onTttResult?.(data);
+    const handleCallIncoming = (data) => handlersRef.current.onCallIncoming?.(data);
+    const handleCallAnswered = (data) => handlersRef.current.onCallAnswered?.(data);
+    const handleIceCandidate = (data) => handlersRef.current.onIceCandidate?.(data);
+    const handleCallEnded = (data) => handlersRef.current.onCallEnded?.(data);
+    const handleCallRejected = (data) => handlersRef.current.onCallRejected?.(data);
+    const handleCallBusy = (data) => handlersRef.current.onCallBusy?.(data);
 
     on('connect', handleConnect);
     on('disconnect', handleDisconnect);
@@ -56,6 +62,12 @@ const useSocket = (handlers = {}) => {
     on('ttt_challenge', handleTttChallenge);
     on('ttt_move', handleTttMove);
     on('ttt_result', handleTttResult);
+    on('call:incoming', handleCallIncoming);
+    on('call:answered', handleCallAnswered);
+    on('call:ice', handleIceCandidate);
+    on('call:ended', handleCallEnded);
+    on('call:rejected', handleCallRejected);
+    on('call:busy', handleCallBusy);
 
     return () => {
       off('connect', handleConnect);
@@ -70,6 +82,12 @@ const useSocket = (handlers = {}) => {
       off('ttt_challenge', handleTttChallenge);
       off('ttt_move', handleTttMove);
       off('ttt_result', handleTttResult);
+      off('call:incoming', handleCallIncoming);
+      off('call:answered', handleCallAnswered);
+      off('call:ice', handleIceCandidate);
+      off('call:ended', handleCallEnded);
+      off('call:rejected', handleCallRejected);
+      off('call:busy', handleCallBusy);
     };
   }, [isAuthenticated, token]);
 

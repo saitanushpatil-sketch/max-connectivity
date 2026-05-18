@@ -18,9 +18,9 @@ const NAV = [
       <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
     </svg>
   )},
-  { href: '/camera', label: 'CAM', icon: (active) => (
-    <span style={{ fontSize: 18, filter: active ? 'drop-shadow(0 0 6px #00F5FF)' : 'none' }}>📸</span>
-  ), badge: 'gallery' },
+  { href: '/memes', label: 'MEMES', icon: (active) => (
+    <span style={{ fontSize: 18, filter: active ? 'drop-shadow(0 0 6px #FF006E)' : 'none' }}>🎭</span>
+  )},
   { href: '/games', label: 'GAMES', icon: (active) => (
     <span style={{ fontSize: 18, filter: active ? 'drop-shadow(0 0 6px #00F5FF)' : 'none' }}>🎮</span>
   )},

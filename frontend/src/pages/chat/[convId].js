@@ -181,20 +181,23 @@ export default function ChatPage() {
     }
   }, [input, sending, convId, friendId, user, replyTo, sendMessage, emitTypingStop, toast]);
 
-  const handleSendMeme = useCallback(async (meme) => {
+  const handleSendGif = useCallback(async (gif) => {
     setShowMemePanel(false);
     setSending(true);
     hapticTap(10);
-    const isCanvas = !!meme.base64;
-    const content = isCanvas ? meme.base64 : meme.name;
-    const memeData = isCanvas
-      ? { name: meme.name, url: meme.base64 }
-      : { memeId: meme._id, name: meme.name, url: meme.url };
+    const content = gif.url;
+    const memeData = {
+      id: gif.id,
+      title: gif.title,
+      url: gif.url,
+      preview: gif.preview,
+      name: gif.title,
+    };
     const tempMsg = {
       _id: `temp_${Date.now()}`,
       conversationId: convId,
       sender: { _id: user._id, username: user.username, displayName: user.displayName, avatarColor: user.avatarColor },
-      type: 'meme',
+      type: 'gif',
       content,
       memeData,
       reactions: [],
@@ -210,7 +213,7 @@ export default function ChatPage() {
         conversationId: convId,
         receiverId: friendId,
         content,
-        type: 'meme',
+        type: 'gif',
         memeData,
       });
       setMessages((prev) =>
@@ -218,7 +221,7 @@ export default function ChatPage() {
       );
     } catch {
       setMessages((prev) => prev.filter((m) => m._id !== tempMsg._id));
-      toast.error('Failed to send meme');
+      toast.error('Failed to send GIF');
     } finally {
       setSending(false);
     }
@@ -331,6 +334,22 @@ export default function ChatPage() {
         <div className="flex items-center gap-1.5 flex-shrink-0">
         <button
           type="button"
+          onClick={() => { hapticTap(10); router.push(`/call/${friendId}?type=audio`); }}
+          className="hud-btn px-2.5 py-1.5 rounded-sm text-xs"
+          style={{ background: 'rgba(0,245,255,0.08)', border: '1px solid rgba(0,245,255,0.25)', color: '#00F5FF' }}
+        >
+          📞
+        </button>
+        <button
+          type="button"
+          onClick={() => { hapticTap(10); router.push(`/call/${friendId}?type=video`); }}
+          className="hud-btn px-2.5 py-1.5 rounded-sm text-xs"
+          style={{ background: 'rgba(0,245,255,0.08)', border: '1px solid rgba(0,245,255,0.25)', color: '#00F5FF' }}
+        >
+          📹
+        </button>
+        <button
+          type="button"
           onClick={() => router.push('/camera')}
           className="hud-btn px-2 py-1 rounded-sm text-[10px]"
           style={{ background: 'rgba(0,245,255,0.1)', border: '1px solid rgba(0,245,255,0.35)', color: '#00F5FF' }}
@@ -439,7 +458,7 @@ export default function ChatPage() {
       {showMemePanel && (
         <MemePanel
           searchQuery={input}
-          onSelect={handleSendMeme}
+          onSelect={handleSendGif}
           onClose={() => setShowMemePanel(false)}
         />
       )}

@@ -6,11 +6,12 @@ import useAuthStore from '../context/authStore';
 import { hasStoredToken } from '../utils/api';
 import SplashScreen from '../components/ui/SplashScreen';
 import PushNotificationInit from '../components/PushNotificationInit';
+import CallInit from '../components/call/CallInit';
 import { ToastProvider } from '../hooks/useToast';
 import ToastContainer from '../components/ui/Toast';
 import '../styles/globals.css';
 
-const PUBLIC_ROUTES = ['/login', '/signup', '/offline', '/auth/google-sync', '/search'];
+const PUBLIC_ROUTES = ['/login', '/signup', '/offline', '/auth/google-sync', '/search', '/call/[friendId]'];
 const SPLASH_KEY = 'max_splash_seen';
 
 const pageVariants = {
@@ -40,7 +41,7 @@ export default function App({ Component, pageProps }) {
 
   useEffect(() => {
     if (isLoading || showSplash) return;
-    const isPublic = PUBLIC_ROUTES.includes(router.pathname);
+    const isPublic = PUBLIC_ROUTES.includes(router.pathname) || router.pathname.startsWith('/call/');
     const hasToken = hasStoredToken();
     if (!isAuthenticated && !isPublic && !hasToken) {
       router.replace('/login');
@@ -109,6 +110,7 @@ export default function App({ Component, pageProps }) {
     <SessionProvider>
       <ToastProvider>
         <PushNotificationInit />
+        <CallInit />
         <ToastContainer />
         <div className="fixed inset-0 flex justify-center" style={{ background: '#0A0A0F' }}>
           <div className="relative w-full max-w-app h-full flex flex-col overflow-hidden hud-bg scan-line-container">

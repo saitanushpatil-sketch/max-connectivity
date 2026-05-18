@@ -20,6 +20,8 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
   const isDeleted = message.deletedForEveryone;
   const isRead = message.readBy?.some((id) => id !== message.sender?._id && id !== message.sender);
   const isBase64Meme = message.type === 'meme' && message.content?.startsWith?.('data:image');
+  const isGif = message.type === 'gif';
+  const [gifLoaded, setGifLoaded] = useState(false);
   const reactionCounts = {};
   message.reactions?.forEach((r) => {
     reactionCounts[r.emoji] = r.users.length;
@@ -92,6 +94,39 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
             <span className="italic" style={{ color: '#6B6B8A', fontSize: 13 }}>
               ⊘ This message was deleted
             </span>
+          ) : isGif ? (
+            <div>
+              <button
+                type="button"
+                className="p-0 border-0 bg-transparent relative block"
+                onClick={() => setLightbox(true)}
+                style={{ maxWidth: 220 }}
+              >
+                {!gifLoaded && (
+                  <div
+                    className="rounded-sm"
+                    style={{
+                      width: 220, height: 160,
+                      background: 'linear-gradient(90deg, #12121A 25%, #1A1A26 50%, #12121A 75%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'shimmer 1.2s infinite',
+                    }}
+                  />
+                )}
+                <img
+                  src={message.memeData?.url || message.content}
+                  alt={message.memeData?.title || message.memeData?.name || 'GIF'}
+                  className="rounded-sm"
+                  style={{ maxWidth: 220, width: '100%', height: 'auto', display: gifLoaded ? 'block' : 'none' }}
+                  onLoad={() => setGifLoaded(true)}
+                />
+              </button>
+              {(message.memeData?.title || message.memeData?.name) && (
+                <span className="block mt-1 font-mono text-[10px] truncate" style={{ color: '#6B6B8A' }}>
+                  {message.memeData.title || message.memeData.name}
+                </span>
+              )}
+            </div>
           ) : isBase64Meme ? (
             <button type="button" className="p-0 border-0 bg-transparent" onClick={() => setLightbox(true)}>
               <img
@@ -242,14 +277,18 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
         )}
       </div>
 
-      {lightbox && isBase64Meme && (
+      {lightbox && (isBase64Meme || isGif) && (
         <button
           type="button"
           className="fixed inset-0 z-[200] flex items-center justify-center p-2 border-0"
           style={{ background: 'rgba(0,0,0,0.92)' }}
           onClick={() => setLightbox(false)}
         >
-          <img src={message.content} alt="" className="max-w-full max-h-full object-contain" />
+          <img
+            src={isGif ? (message.memeData?.url || message.content) : message.content}
+            alt=""
+            className="max-w-full max-h-full object-contain"
+          />
         </button>
       )}
     </div>

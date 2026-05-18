@@ -1,126 +1,210 @@
-import { useState, useMemo } from 'react';
-import Image from 'next/image';
-import { MEME_TEMPLATES, MEME_CATEGORIES } from './templates';
-import MemeEditor from './MemeEditor';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import api from '../../utils/api';
 
-export default function MemePanel({ searchQuery = '', onSelect, onClose }) {
-  const [category, setCategory] = useState('All');
-  const [localSearch, setLocalSearch] = useState(searchQuery);
-  const [editorTemplate, setEditorTemplate] = useState(null);
+const QUICK_CATEGORIES = [
+  { label: '🔥 Trending', query: '' },
+  { label: '🎬 TFI', query: 'telugu movie' },
+  { label: '🎭 Allu Arjun', query: 'allu arjun pushpa' },
+  { label: '🦁 RRR', query: 'RRR naatu naatu' },
+  { label: '💪 Prabhas', query: 'prabhas baahubali' },
+  { label: '🎪 Bollywood', query: 'bollywood funny' },
+  { label: '😂 SRK', query: 'shah rukh khan' },
+  { label: '🙏 Bhai', query: 'salman khan bhai' },
+  { label: '😱 Reaction', query: 'shocked reaction' },
+  { label: '🤣 Funny', query: 'funny fail' },
+  { label: '💃 Dance', query: 'happy dance' },
+  { label: '😎 Deal', query: 'deal with it' },
+  { label: '🧠 Mind', query: 'mind blown' },
+  { label: '👏 Clap', query: 'slow clap' },
+  { label: '😤 Angry', query: 'angry reaction' },
+];
 
-  const filtered = useMemo(() => {
-    return MEME_TEMPLATES.filter((t) => {
-      const matchCat = category === 'All' || t.category === category;
-      const q = localSearch.trim().toLowerCase();
-      const matchSearch = !q || t.name.toLowerCase().includes(q) || t.id.includes(q);
-      return matchCat && matchSearch;
+export default function MemePanel({ searchQuery, onSelect, onClose }) {
+  const [gifs, setGifs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState(searchQuery || '');
+  const [activeCategory, setActiveCategory] = useState(0);
+  const [nextPos, setNextPos] = useState('');
+  const [hasMore, setHasMore] = useState(true);
+  const observerRef = useRef();
+  const lastGifRef = useRef();
+  const searchTimer = useRef();
+
+  const fetchGifs = useCallback(async (q, pos = '', reset = true) => {
+    setLoading(true);
+    try {
+      const endpoint = q
+        ? `/memes/search?q=${encodeURIComponent(q)}&next=${pos}&limit=20`
+        : '/memes/trending';
+      const { data } = await api.get(endpoint);
+      const newGifs = data.gifs || [];
+      setGifs((prev) => (reset ? newGifs : [...prev, ...newGifs]));
+      setNextPos(data.next || '');
+      setHasMore(!!data.next);
+    } catch {
+      setGifs([]);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchGifs('', '', true);
+  }, [fetchGifs]);
+
+  useEffect(() => {
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      fetchGifs(search, '', true);
+    }, 400);
+    return () => clearTimeout(searchTimer.current);
+  }, [search, fetchGifs]);
+
+  useEffect(() => {
+    if (!lastGifRef.current || !hasMore) return;
+    observerRef.current = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && !loading) {
+        fetchGifs(search, nextPos, false);
+      }
     });
-  }, [category, localSearch]);
+    observerRef.current.observe(lastGifRef.current);
+    return () => observerRef.current?.disconnect();
+  }, [gifs, hasMore, loading, search, nextPos, fetchGifs]);
 
-  if (editorTemplate) {
-    return (
-      <MemeEditor
-        template={editorTemplate}
-        onCancel={() => setEditorTemplate(null)}
-        onSend={async (base64, name) => {
-          await onSelect?.({ name, base64 });
-          setEditorTemplate(null);
-        }}
-      />
-    );
-  }
+  const handleCategoryClick = (cat, idx) => {
+    setActiveCategory(idx);
+    setSearch(cat.query);
+    fetchGifs(cat.query, '', true);
+  };
 
   return (
-    <div
-      className="flex flex-col meme-panel-enter"
-      style={{ background: '#0A0A0F', borderTop: '1px solid #252535', height: 340 }}
-    >
-      <div className="flex items-center gap-2 px-3 pt-3 pb-2">
-        <div
-          className="flex items-center gap-2 flex-1 px-3 py-2 rounded-sm"
-          style={{ background: '#12121A', border: '1px solid #252535' }}
-        >
-          <span style={{ color: '#6B6B8A', fontSize: 14 }}>🔍</span>
+    <div style={{
+      position: 'fixed', bottom: 0, left: '50%',
+      transform: 'translateX(-50%)',
+      width: '100%', maxWidth: 448,
+      height: '70vh', zIndex: 100,
+      background: '#0A0A0F',
+      borderTop: '1px solid #00F5FF44',
+      borderRadius: '16px 16px 0 0',
+      display: 'flex', flexDirection: 'column',
+      boxShadow: '0 -4px 40px rgba(0,245,255,0.15)',
+    }}>
+      <div style={{
+        width: 40, height: 4, background: '#252535',
+        borderRadius: 2, margin: '12px auto 8px',
+      }} />
+
+      <div style={{ padding: '0 12px 8px' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: '#12121A', border: '1px solid #252535',
+          borderRadius: 8, padding: '8px 12px',
+        }}>
+          <span style={{ fontSize: 16 }}>🔍</span>
           <input
-            value={localSearch}
-            onChange={(e) => setLocalSearch(e.target.value)}
-            placeholder="SEARCH TEMPLATES..."
-            className="flex-1 bg-transparent outline-none font-mono text-sm"
-            style={{ color: '#E8E8FF', fontSize: 13, letterSpacing: '0.05em' }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search GIFs... allu arjun, bollywood..."
+            style={{
+              flex: 1, background: 'none', border: 'none',
+              outline: 'none', color: '#E8E8FF', fontSize: 14,
+              fontFamily: 'Exo 2, sans-serif',
+            }}
+            autoFocus
           />
-          {localSearch && (
-            <button type="button" onClick={() => setLocalSearch('')} style={{ color: '#6B6B8A', fontSize: 12 }}>✕</button>
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              style={{ background: 'none', border: 'none', color: '#6B6B8A', cursor: 'pointer', fontSize: 16 }}
+            >
+              ✕
+            </button>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="w-8 h-8 flex items-center justify-center rounded-sm font-mono text-xs"
-          style={{ background: '#1A1A26', border: '1px solid #252535', color: '#6B6B8A' }}
-        >
-          ✕
-        </button>
       </div>
 
-      <div className="flex gap-2 px-3 pb-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-        {MEME_CATEGORIES.map((cat) => (
+      <div style={{
+        display: 'flex', gap: 8, padding: '0 12px 8px',
+        overflowX: 'auto', scrollbarWidth: 'none',
+      }}>
+        {QUICK_CATEGORIES.map((cat, idx) => (
           <button
-            key={cat}
+            key={cat.label}
             type="button"
-            onClick={() => setCategory(cat)}
-            className="flex-shrink-0 px-3 py-1 rounded-sm font-mono text-xs transition-all"
+            onClick={() => handleCategoryClick(cat, idx)}
             style={{
-              background: category === cat ? 'rgba(0,245,255,0.15)' : '#12121A',
-              border: `1px solid ${category === cat ? '#00F5FF' : '#252535'}`,
-              color: category === cat ? '#00F5FF' : '#6B6B8A',
-              letterSpacing: '0.06em',
+              flexShrink: 0, padding: '6px 12px',
+              background: activeCategory === idx ? 'rgba(0,245,255,0.15)' : '#12121A',
+              border: `1px solid ${activeCategory === idx ? '#00F5FF' : '#252535'}`,
+              borderRadius: 20, color: activeCategory === idx ? '#00F5FF' : '#6B6B8A',
+              fontSize: 12, fontFamily: 'Share Tech Mono, monospace',
+              cursor: 'pointer', whiteSpace: 'nowrap',
             }}
           >
-            {cat.toUpperCase()}
+            {cat.label}
           </button>
         ))}
       </div>
 
-      <div className="px-3 pb-1">
-        <span className="font-mono text-[10px] tracking-widest" style={{ color: '#6B6B8A' }}>
-          {localSearch ? `RESULTS FOR "${localSearch.toUpperCase()}"` : '// LOCAL TEMPLATES'}
-        </span>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-3 pb-3">
-        {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-2">
-            <span style={{ fontSize: 32 }}>🎭</span>
-            <span className="font-mono text-xs tracking-widest" style={{ color: '#6B6B8A' }}>NO TEMPLATES FOUND</span>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 8px', scrollbarWidth: 'thin' }}>
+        {loading && gifs.length === 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+            {[...Array(8)].map((_, i) => (
+              <div key={i} style={{ height: 140, background: '#12121A', borderRadius: 8, animation: 'pulse 1.5s infinite' }} />
+            ))}
+          </div>
+        ) : gifs.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40, color: '#6B6B8A' }}>
+            <div style={{ fontSize: 40 }}>🎭</div>
+            <p style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 12 }}>NO GIFS FOUND</p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-2">
-            {filtered.map((template) => (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+            {gifs.map((gif, idx) => (
               <button
-                key={template.id}
+                key={gif.id}
                 type="button"
-                onClick={() => setEditorTemplate(template)}
-                className="relative group rounded-sm overflow-hidden aspect-square"
-                style={{ background: '#12121A', border: '1px solid #252535' }}
+                ref={idx === gifs.length - 1 ? lastGifRef : null}
+                onClick={() => onSelect(gif)}
+                style={{
+                  border: '1px solid #252535', borderRadius: 8,
+                  overflow: 'hidden', cursor: 'pointer',
+                  background: '#12121A', padding: 0,
+                  position: 'relative', aspectRatio: '4/3',
+                }}
               >
-                <Image
-                  src={template.src}
-                  alt={template.name}
-                  fill
-                  className="object-cover transition-transform group-hover:scale-105"
-                  sizes="120px"
+                <img
+                  src={gif.preview || gif.url}
+                  alt={gif.title}
+                  loading="lazy"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  onError={(e) => { e.target.style.display = 'none'; }}
                 />
-                <div
-                  className="absolute inset-x-0 bottom-0 p-1"
-                  style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.85))' }}
-                >
-                  <span className="font-mono text-[8px] text-white leading-tight line-clamp-2">{template.name}</span>
-                </div>
               </button>
             ))}
           </div>
         )}
+        {loading && gifs.length > 0 && (
+          <div style={{ textAlign: 'center', padding: 16 }}>
+            <div style={{ color: '#00F5FF', fontFamily: 'Share Tech Mono, monospace', fontSize: 11 }}>
+              LOADING MORE...
+            </div>
+          </div>
+        )}
       </div>
+
+      <button
+        type="button"
+        onClick={onClose}
+        style={{
+          position: 'absolute', top: 16, right: 16,
+          background: '#1A1A26', border: '1px solid #252535',
+          borderRadius: 6, color: '#6B6B8A', width: 28,
+          height: 28, cursor: 'pointer', fontSize: 14,
+        }}
+      >
+        ✕
+      </button>
     </div>
   );
 }

@@ -510,3 +510,8 @@ button:active:not(:disabled) {
   from { transform: translateY(100%); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

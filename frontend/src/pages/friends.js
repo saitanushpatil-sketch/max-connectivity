@@ -114,11 +114,11 @@ export default function Friends() {
                     MSG
                   </button>
                   <button
-                    onClick={() => router.push('/camera')}
+                    onClick={() => { hapticTap(10); router.push(`/call/${f._id}?type=video`); }}
                     className="hud-btn px-2 py-1.5 rounded-sm text-[10px]"
                     style={{ background: 'rgba(0,245,255,0.1)', border: '1px solid rgba(0,245,255,0.35)', color: '#00F5FF' }}
                   >
-                    📸
+                    📹
                   </button>
                   <button
                     onClick={() => router.push({ pathname: '/games', query: { game: 'ttt', opponent: f._id, name: f.displayName || f.username, host: '1' } })}

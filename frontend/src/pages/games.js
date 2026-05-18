@@ -8,6 +8,7 @@ import DesiQuiz from '../components/games/DesiQuiz';
 import ReactionTest from '../components/games/ReactionTest';
 import CarRacer from '../components/games/CarRacer';
 import SpaceShooter from '../components/games/SpaceShooter';
+import Scoreboard from '../components/games/Scoreboard';
 import api from '../utils/api';
 import hapticTap from '../utils/haptic';
 
@@ -251,6 +252,7 @@ function GameCard({ game, stat, onClick }) {
 export default function GamesPage() {
   const router = useRouter();
   const [activeGame, setActiveGame] = useState(null);
+  const [showGameScoreboard, setShowGameScoreboard] = useState(false);
   const [tab, setTab] = useState('games'); // games | leaderboard
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
@@ -272,7 +274,7 @@ export default function GamesPage() {
   }, [router.query.game]);
 
   const goBack = useCallback(() => {
-    hapticTap(6); setActiveGame(null); loadStats();
+    hapticTap(6); setActiveGame(null); setShowGameScoreboard(false); loadStats();
   }, [loadStats]);
 
   useEffect(() => {
@@ -332,7 +334,19 @@ export default function GamesPage() {
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
         {/* Active game */}
         {activeGame ? (
-          <div className="flex-1 overflow-y-auto pb-4">
+          <div className="flex-1 overflow-y-auto pb-4 relative">
+            <button
+              type="button"
+              onClick={() => setShowGameScoreboard(true)}
+              style={{
+                position: 'absolute', top: 8, right: 12, zIndex: 20,
+                background: 'rgba(0,245,255,0.1)', border: '1px solid #00F5FF44',
+                borderRadius: 8, padding: '6px 10px', cursor: 'pointer',
+                fontFamily: 'monospace', fontSize: 11, color: '#00F5FF',
+              }}
+            >
+              🏆
+            </button>
             <ErrorBoundary fallbackMessage="Game module failed to load.">
               {ActiveComponent && (
                 <ActiveComponent
@@ -344,6 +358,9 @@ export default function GamesPage() {
                 />
               )}
             </ErrorBoundary>
+            {showGameScoreboard && (
+              <Scoreboard game={activeGame} onClose={() => setShowGameScoreboard(false)} />
+            )}
           </div>
         ) : tab === 'leaderboard' ? (
           <div className="flex-1 overflow-y-auto">
