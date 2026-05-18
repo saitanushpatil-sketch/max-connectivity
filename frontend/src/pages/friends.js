@@ -22,7 +22,7 @@ export default function Friends() {
   const [actionLoading, setActionLoading] = useState(null);
   const { toast } = useToast();
 
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
       const [fr, pend] = await Promise.all([api.get('/friends'), api.get('/friends/pending')]);
@@ -31,11 +31,11 @@ export default function Friends() {
       setOutgoing(pend.data.outgoing || []);
     } catch (_) {}
     setLoading(false);
-  };
+  }, []);
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const respond = async (requestId, action) => {
+  const respond = useCallback(async (requestId, action) => {
     setActionLoading(requestId);
     try {
       await api.put('/friends/respond', { requestId, action });
@@ -43,16 +43,17 @@ export default function Friends() {
       fetchAll();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to respond');
+    } finally {
+      setActionLoading(null);
     }
-    setActionLoading(null);
-  };
+  }, [fetchAll, toast]);
 
-  const removeFriend = async (friendId) => {
+  const removeFriend = useCallback(async (friendId) => {
     try {
       await api.delete(`/friends/${friendId}`);
       fetchAll();
     } catch (_) {}
-  };
+  }, [fetchAll]);
 
   const TABS = [
     { key: 'friends', label: `SQUAD (${friends.length})` },

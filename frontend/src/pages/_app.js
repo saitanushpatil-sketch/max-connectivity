@@ -55,9 +55,14 @@ export default function App({ Component, pageProps }) {
   }, []);
 
   useEffect(() => {
-    const onRoute = () => setIsInitialLoad(false);
-    router.events.on('routeChangeComplete', onRoute);
-    return () => router.events.off('routeChangeComplete', onRoute);
+    const onRouteComplete = () => setIsInitialLoad(false);
+    const onRouteError = () => setIsInitialLoad(false);
+    router.events.on('routeChangeComplete', onRouteComplete);
+    router.events.on('routeChangeError', onRouteError);
+    return () => {
+      router.events.off('routeChangeComplete', onRouteComplete);
+      router.events.off('routeChangeError', onRouteError);
+    };
   }, [router.events]);
 
   const handleSplashComplete = () => {

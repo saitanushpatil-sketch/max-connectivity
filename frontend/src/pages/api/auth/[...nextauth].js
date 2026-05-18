@@ -36,7 +36,6 @@ export default NextAuth({
           token.backendToken = data.token;
           token.backendUser = data.user;
         } catch (error) {
-          console.error('Google backend sync error:', error);
           token.backendError = error.message;
         }
       }

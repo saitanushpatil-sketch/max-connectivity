@@ -38,6 +38,7 @@ export default function Chats() {
   }, [initNotifications]);
 
   const fetchFriends = useCallback(async () => {
+    if (!user?._id) return;
     try {
       const { data } = await api.get('/friends');
       setFriends(data.friends || []);

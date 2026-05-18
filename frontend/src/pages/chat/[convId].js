@@ -147,7 +147,7 @@ export default function ChatPage() {
 
     // Optimistic message
     const tempMsg = {
-      _id: `temp_${Date.now()}`,
+      _id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       conversationId: convId,
       sender: { _id: user._id, username: user.username, displayName: user.displayName, avatarColor: user.avatarColor },
       type: 'text',
@@ -194,7 +194,7 @@ export default function ChatPage() {
       name: gif.title,
     };
     const tempMsg = {
-      _id: `temp_${Date.now()}`,
+      _id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       conversationId: convId,
       sender: { _id: user._id, username: user.username, displayName: user.displayName, avatarColor: user.avatarColor },
       type: 'gif',

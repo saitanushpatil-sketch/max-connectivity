@@ -42,7 +42,7 @@ export default function Profile() {
     if (user) checkSubscribed();
   }, [user, checkSubscribed]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setSaving(true);
     setError('');
     try {
@@ -51,24 +51,30 @@ export default function Profile() {
       setEditing(false);
     } catch (err) {
       setError(err.response?.data?.error || 'Save failed');
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-  };
+  }, [form, updateUser]);
 
   const handleLogout = () => {
     logout();
     router.replace('/login');
   };
 
-  const handlePushToggle = async () => {
+  const handlePushToggle = useCallback(async () => {
     setPushLoading(true);
-    if (isSubscribed) {
-      await unsubscribe();
-    } else {
-      await subscribe();
+    try {
+      if (isSubscribed) {
+        await unsubscribe();
+      } else {
+        await subscribe();
+      }
+    } catch (err) {
+      // Handle error silently or show toast
+    } finally {
+      setPushLoading(false);
     }
-    setPushLoading(false);
-  };
+  }, [isSubscribed, subscribe, unsubscribe]);
 
   if (!user) return null;
 

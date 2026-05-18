@@ -9,7 +9,7 @@ export default function Home() {
   useEffect(() => {
     if (isLoading) return;
     router.replace(isAuthenticated ? '/chats' : '/login');
-  }, [isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading, router]);
 
   return null;
 }

@@ -115,7 +115,6 @@ export default function useWebRTC({ socket, localVideoRef, remoteVideoRef }) {
         callType,
       });
     } catch (err) {
-      console.error('Start call error:', err);
       cleanup();
       if (typeof window !== 'undefined') window.alert('Could not access camera/microphone');
     }
@@ -153,7 +152,6 @@ export default function useWebRTC({ socket, localVideoRef, remoteVideoRef }) {
         timerRef.current = setInterval(() => setCallDuration((d) => d + 1), 1000);
       }
     } catch (err) {
-      console.error('Answer call error:', err);
       cleanup();
     }
   }, [createPC, cleanup, socket]);
@@ -166,7 +164,6 @@ export default function useWebRTC({ socket, localVideoRef, remoteVideoRef }) {
         pendingCandidates.current.push(candidate);
       }
     } catch (err) {
-      console.error('ICE candidate error:', err);
     }
   }, []);
 
@@ -184,7 +181,6 @@ export default function useWebRTC({ socket, localVideoRef, remoteVideoRef }) {
         }
       }
     } catch (err) {
-      console.error('Handle answer error:', err);
     }
   }, []);
 

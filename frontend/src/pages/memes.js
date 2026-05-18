@@ -65,7 +65,6 @@ export default function MemesPage() {
       setHasMore(!!data.next);
       setTotal(items.length);
     } catch (err) {
-      console.error('Fetch GIFs error:', err);
     } finally {
       setLoading(false);
     }
@@ -122,7 +121,6 @@ export default function MemesPage() {
       setEditorTemplate(null);
       // Optional: show toast here
     } catch (err) {
-      console.error('Failed to send', err);
     }
   };
 

@@ -74,7 +74,6 @@ export default function usePushNotifications() {
       setIsSubscribed(true);
       return true;
     } catch (err) {
-      console.error('Push subscribe error:', err);
       setIsSubscribed(false);
       return false;
     }
@@ -90,7 +89,6 @@ export default function usePushNotifications() {
       setIsSubscribed(false);
       return true;
     } catch (err) {
-      console.error('Push unsubscribe error:', err);
       return false;
     }
   }, [isSupported]);

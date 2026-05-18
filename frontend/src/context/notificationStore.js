@@ -14,7 +14,6 @@ const useNotificationStore = create((set, get) => ({
         set({ notifications: parsed, unreadCount: unread });
       }
     } catch (e) {
-      console.error('Failed to load notifications:', e);
     }
   },
 
