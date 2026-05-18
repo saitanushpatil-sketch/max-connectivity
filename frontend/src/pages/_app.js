@@ -27,9 +27,11 @@ export default function App({ Component, pageProps }) {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
-    init().catch(() => {
-      router.replace('/login');
-    });
+    if (typeof window !== 'undefined' && init) {
+      init().catch(() => {
+        router.replace('/login');
+      });
+    }
   }, [init, router]);
 
   useEffect(() => {
@@ -46,11 +48,9 @@ export default function App({ Component, pageProps }) {
     const isPublic = PUBLIC_ROUTES.includes(router.pathname) || router.pathname.startsWith('/call/');
     const hasToken = hasStoredToken();
     if (!isAuthenticated && !isPublic && !hasToken) {
-      router.replace('/login');
+      router.replace('/login').catch(() => {});
     }
-  }, [isAuthenticated, isLoading, router.pathname, showSplash, router]).catch(() => {
-    router.replace('/login');
-  });
+  }, [isAuthenticated, isLoading, router.pathname, showSplash, router]);
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -142,3 +142,7 @@ export default function App({ Component, pageProps }) {
     </SessionProvider>
   );
 }
+
+App.getInitialProps = async () => {
+  return { pageProps: {} };
+};

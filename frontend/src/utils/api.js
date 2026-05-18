@@ -34,23 +34,28 @@ export function hasStoredToken() {
   return !!(getTokenFromCookie() || localStorage.getItem(TOKEN_KEY));
 }
 
-const api = typeof window !== 'undefined' ? axios.create({
+const api = axios.create({
   baseURL: API_URL,
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
-}) : null;
+});
 
-if (api) {
-  api.interceptors.request.use((config) => {
+api.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
     const token = getToken();
     if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  });
+  }
+  return config;
+});
 
-  api.interceptors.response.use(
-    (res) => res,
-    (error) => Promise.reject(error)
-  );
-}
+api.interceptors.response.use(
+  (res) => res,
+  (error) => {
+    if (typeof window === 'undefined') {
+      return Promise.reject(error);
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default api;

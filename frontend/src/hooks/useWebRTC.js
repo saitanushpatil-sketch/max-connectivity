@@ -58,7 +58,7 @@ export default function useWebRTC({ socket, localVideoRef, remoteVideoRef }) {
     peerConnection.ontrack = ({ streams }) => {
       if (remoteVideoRef?.current && streams[0]) {
         remoteVideoRef.current.srcObject = streams[0];
-        remoteVideoRef.current.play?.().catch(() => {});
+        remoteVideoRef.current.play?.()?.catch(() => {});
       }
     };
 
