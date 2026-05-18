@@ -8,6 +8,8 @@ import useAuthStore from '../context/authStore';
 
 const CATEGORIES = ['All', 'Trending 🔥', 'Telugu', 'Hindi', 'English', 'Desi', 'Wholesome', 'Dark', 'Templates', 'Random'];
 
+export const getServerSideProps = async () => ({ props: {} });
+
 export default function MemesPage() {
   const router = useRouter();
   const { user } = useAuthStore();

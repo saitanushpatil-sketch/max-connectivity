@@ -13,6 +13,8 @@ import hapticTap from '../../utils/haptic';
 const buildConvId = (a, b) => [a, b].sort().join('_');
 const MESSAGE_MAX_LENGTH = 2000;
 
+export const getServerSideProps = async () => ({ props: {} });
+
 export default function ChatPage() {
   const router = useRouter();
   const { convId } = router.query;

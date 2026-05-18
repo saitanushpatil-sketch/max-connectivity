@@ -11,6 +11,8 @@ import useAuthStore from '../context/authStore';
 
 const buildConvId = (a, b) => [a, b].sort().join('_');
 
+export const getServerSideProps = async () => ({ props: {} });
+
 export default function Friends() {
   const { user } = useAuthStore();
   const router = useRouter();

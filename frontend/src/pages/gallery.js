@@ -4,6 +4,8 @@ import BottomNav from '../components/ui/BottomNav';
 import { getGalleryPhotos, deleteGalleryPhoto, downloadPhoto } from '../utils/galleryStorage';
 import useToast from '../hooks/useToast';
 
+export const getServerSideProps = async () => ({ props: {} });
+
 export default function GalleryPage() {
   const router = useRouter();
   const { toast } = useToast();

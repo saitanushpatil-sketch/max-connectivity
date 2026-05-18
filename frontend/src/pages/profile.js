@@ -20,6 +20,8 @@ const BADGES = {
   undefeated: { icon: '👑', label: 'UNDEFEATED', color: '#00F5FF' },
 };
 
+export const getServerSideProps = async () => ({ props: {} });
+
 export default function Profile() {
   const router = useRouter();
   const { user, updateUser, logout } = useAuthStore();

@@ -2,6 +2,8 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import CameraExperience from '../components/camera/CameraExperience';
 
+export const getServerSideProps = async () => ({ props: {} });
+
 export default function CameraPage() {
   const router = useRouter();
 

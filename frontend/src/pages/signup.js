@@ -15,6 +15,8 @@ function formatCountdown(seconds) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+export const getServerSideProps = async () => ({ props: {} });
+
 export default function Signup() {
   const router = useRouter();
   const { sendSignupOtp, verifySignupOtp, signup } = useAuthStore();

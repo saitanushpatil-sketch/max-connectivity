@@ -249,6 +249,8 @@ function GameCard({ game, stat, onClick }) {
 }
 
 // ─── Main Page ────────────────────────────────────────────────────
+export const getServerSideProps = async () => ({ props: {} });
+
 export default function GamesPage() {
   const router = useRouter();
   const [activeGame, setActiveGame] = useState(null);

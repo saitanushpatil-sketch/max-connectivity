@@ -24,6 +24,8 @@ const timeAgo = (date) => {
   return `${Math.floor(h / 24)}d`;
 };
 
+export const getServerSideProps = async () => ({ props: {} });
+
 export default function Chats() {
   const { user } = useAuthStore();
   const router = useRouter();

@@ -3,6 +3,8 @@ import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
 import useAuthStore from '../../context/authStore';
 
+export const getServerSideProps = async () => ({ props: {} });
+
 export default function GoogleSync() {
   const router = useRouter();
   const { data: session, status } = useSession();

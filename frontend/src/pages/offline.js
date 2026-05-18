@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+export const getServerSideProps = async () => ({ props: {} });
+
 export default function Offline() {
   return (
     <div className="flex flex-col h-full items-center justify-center gap-6 px-8 hud-bg">
