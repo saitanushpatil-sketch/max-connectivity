@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { SessionProvider } from 'next-auth/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import useAuthStore from '../context/authStore';
+import { hasStoredToken } from '../utils/api';
 import SplashScreen from '../components/ui/SplashScreen';
 import PushNotificationInit from '../components/PushNotificationInit';
 import { ToastProvider } from '../hooks/useToast';
@@ -40,7 +41,8 @@ export default function App({ Component, pageProps }) {
   useEffect(() => {
     if (isLoading || showSplash) return;
     const isPublic = PUBLIC_ROUTES.includes(router.pathname);
-    if (!isAuthenticated && !isPublic) {
+    const hasToken = hasStoredToken();
+    if (!isAuthenticated && !isPublic && !hasToken) {
       router.replace('/login');
     }
   }, [isAuthenticated, isLoading, router, showSplash]);

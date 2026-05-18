@@ -1,8 +1,58 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const OTP = require('../models/OTP');
+const { sendOTP, sendWelcome } = require('../utils/mailer');
+
+const JWT_EXPIRY = '30d';
+const OTP_TTL_MS = 10 * 60 * 1000;
+const VERIFIED_EMAIL_EXPIRY = '30m';
 
 const generateToken = (userId) => {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: JWT_EXPIRY });
+};
+
+const generateVerifiedEmailToken = (email) => {
+  return jwt.sign(
+    { email: email.toLowerCase(), purpose: 'email_verified' },
+    process.env.JWT_SECRET,
+    { expiresIn: VERIFIED_EMAIL_EXPIRY }
+  );
+};
+
+const verifyVerifiedEmailToken = (token, email) => {
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return decoded.purpose === 'email_verified' && decoded.email === email.toLowerCase();
+  } catch {
+    return false;
+  }
+};
+
+const generateOTPCode = () => String(Math.floor(100000 + Math.random() * 900000));
+
+const saveAndSendOTP = async (email) => {
+  const normalized = email.toLowerCase().trim();
+  const code = generateOTPCode();
+  const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+
+  await OTP.deleteMany({ email: normalized });
+  await OTP.create({ email: normalized, code, expiresAt, used: false });
+
+  const result = await sendOTP(normalized, code);
+  if (result.dev && process.env.NODE_ENV !== 'production') {
+    console.log(`[dev OTP] ${normalized}: ${code}`);
+  }
+  return normalized;
+};
+
+const validateOTP = async (email, code) => {
+  const normalized = email.toLowerCase().trim();
+  const record = await OTP.findOne({ email: normalized, code: String(code).trim(), used: false });
+  if (!record) return { ok: false, error: 'Invalid or expired code' };
+  if (record.expiresAt < new Date()) return { ok: false, error: 'Code expired' };
+  record.used = true;
+  await record.save();
+  return { ok: true, email: normalized };
 };
 
 const baseUsernameFromName = (name) => {
@@ -26,43 +76,97 @@ const uniqueUsername = async (name) => {
   return username;
 };
 
+const finishLogin = async (user) => {
+  user.status = 'online';
+  user.lastSeen = new Date();
+  user.updateStreak();
+  user.checkBadges();
+  await user.save();
+  return {
+    token: generateToken(user._id),
+    user: user.toPublicJSON(),
+  };
+};
+
+// POST /api/auth/send-otp
+exports.sendSignupOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      return res.status(400).json({ error: 'Valid email is required' });
+    }
+
+    const existing = await User.findOne({ email: email.toLowerCase() });
+    if (existing) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    await saveAndSendOTP(email);
+    res.json({ message: 'OTP sent' });
+  } catch (error) {
+    console.error('Send signup OTP error:', error);
+    res.status(500).json({ error: 'Failed to send verification code' });
+  }
+};
+
+// POST /api/auth/verify-otp
+exports.verifySignupOTP = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({ error: 'Email and code are required' });
+    }
+
+    const result = await validateOTP(email, code);
+    if (!result.ok) return res.status(400).json({ error: result.error });
+
+    const verifiedEmailToken = generateVerifiedEmailToken(result.email);
+    res.json({ verified: true, email: result.email, verifiedEmailToken });
+  } catch (error) {
+    console.error('Verify signup OTP error:', error);
+    res.status(500).json({ error: 'Verification failed' });
+  }
+};
+
 // POST /api/auth/signup
 exports.signup = async (req, res) => {
   try {
-    const { username, email, password, displayName, avatarColor } = req.body;
+    const { username, email, displayName, avatarColor, verifiedEmailToken } = req.body;
 
-    if (!username || !email || !password) {
-      return res.status(400).json({ error: 'Username, email, and password are required' });
+    if (!username || !email || !verifiedEmailToken) {
+      return res.status(400).json({ error: 'Username, email, and verifiedEmailToken are required' });
     }
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+      return res.status(400).json({ error: 'Username must be 3-20 chars, letters/numbers/underscores only' });
+    }
+    if (!verifyVerifiedEmailToken(verifiedEmailToken, email)) {
+      return res.status(400).json({ error: 'Email not verified — complete OTP verification first' });
     }
 
-    const existingUser = await User.findOne({ $or: [{ email: email.toLowerCase() }, { username: username.toLowerCase() }] });
+    const normalizedEmail = email.toLowerCase();
+    const existingUser = await User.findOne({
+      $or: [{ email: normalizedEmail }, { username: username.toLowerCase() }],
+    });
     if (existingUser) {
-      if (existingUser.email === email.toLowerCase()) return res.status(400).json({ error: 'Email already registered' });
+      if (existingUser.email === normalizedEmail) return res.status(400).json({ error: 'Email already registered' });
       return res.status(400).json({ error: 'Username already taken' });
     }
 
     const user = new User({
       username: username.toLowerCase(),
-      email: email.toLowerCase(),
-      password,
+      email: normalizedEmail,
       displayName: displayName || username,
       avatarColor: avatarColor || '#00F5FF',
     });
 
-    // First user gets early_adopter badge
     const count = await User.countDocuments();
     if (count === 0) user.badges = ['early_adopter'];
 
     await user.save();
+    sendWelcome(normalizedEmail, user.displayName).catch(() => {});
 
     const token = generateToken(user._id);
-    res.status(201).json({
-      token,
-      user: user.toPublicJSON(),
-    });
+    res.status(201).json({ token, user: user.toPublicJSON() });
   } catch (error) {
     if (error.code === 11000) {
       const field = Object.keys(error.keyValue)[0];
@@ -77,43 +181,45 @@ exports.signup = async (req, res) => {
   }
 };
 
-// POST /api/auth/login
-exports.login = async (req, res) => {
+// POST /api/auth/login-otp
+exports.sendLoginOTP = async (req, res) => {
   try {
-    const { identifier, password } = req.body;
-    if (!identifier || !password) {
-      return res.status(400).json({ error: 'Identifier and password are required' });
+    const { email } = req.body;
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      return res.status(400).json({ error: 'Valid email is required' });
     }
 
-    const isEmail = identifier.includes('@');
-    const query = isEmail
-      ? { email: identifier.toLowerCase() }
-      : { username: identifier.toLowerCase() };
-
-    const user = await User.findOne(query).select('+password');
+    const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
-      return res.status(400).json({ error: 'Invalid credentials' });
+      return res.status(400).json({ error: 'No account found with this email' });
     }
 
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(400).json({ error: 'Invalid credentials' });
-    }
-
-    // Update status and streak
-    user.status = 'online';
-    user.lastSeen = new Date();
-    user.updateStreak();
-    user.checkBadges();
-    await user.save();
-
-    const token = generateToken(user._id);
-    res.json({
-      token,
-      user: user.toPublicJSON(),
-    });
+    await saveAndSendOTP(email);
+    res.json({ message: 'OTP sent' });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Send login OTP error:', error);
+    res.status(500).json({ error: 'Failed to send access code' });
+  }
+};
+
+// POST /api/auth/login-verify
+exports.loginVerify = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({ error: 'Email and code are required' });
+    }
+
+    const result = await validateOTP(email, code);
+    if (!result.ok) return res.status(400).json({ error: result.error });
+
+    const user = await User.findOne({ email: result.email });
+    if (!user) return res.status(400).json({ error: 'No account found with this email' });
+
+    const session = await finishLogin(user);
+    res.json(session);
+  } catch (error) {
+    console.error('Login verify error:', error);
     res.status(500).json({ error: 'Server error during login' });
   }
 };
@@ -150,17 +256,8 @@ exports.googleAuth = async (req, res) => {
       if (name && !user.displayName) user.displayName = name;
     }
 
-    user.status = 'online';
-    user.lastSeen = new Date();
-    user.updateStreak();
-    user.checkBadges();
-    await user.save();
-
-    const token = generateToken(user._id);
-    res.json({
-      token,
-      user: user.toPublicJSON(),
-    });
+    const session = await finishLogin(user);
+    res.json(session);
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({ error: 'Account conflict — try again' });

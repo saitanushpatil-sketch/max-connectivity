@@ -24,7 +24,7 @@ const messageSchema = new mongoose.Schema({
   content: {
     type: String,
     required: true,
-    maxlength: 2000,
+    maxlength: 500000,
   },
   // For meme messages
   memeData: {

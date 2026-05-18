@@ -171,6 +171,37 @@ exports.initSocket = (io) => {
       }
     });
 
+    // Tic Tac Toe multiplayer
+    socket.on('ttt_challenge', ({ opponentId, gameId }) => {
+      const opponentSockets = getUserSockets(opponentId);
+      opponentSockets.forEach((sid) => {
+        io.to(sid).emit('ttt_challenge', {
+          from: userId,
+          gameId,
+          challenger: {
+            _id: userId,
+            username: socket.user.username,
+            displayName: socket.user.displayName,
+            avatarColor: socket.user.avatarColor,
+          },
+        });
+      });
+    });
+
+    socket.on('ttt_move', ({ gameId, board, nextPlayer, opponentId }) => {
+      const opponentSockets = getUserSockets(opponentId);
+      opponentSockets.forEach((sid) => {
+        io.to(sid).emit('ttt_move', { gameId, board, nextPlayer, from: userId });
+      });
+    });
+
+    socket.on('ttt_result', ({ gameId, winner, opponentId }) => {
+      const opponentSockets = getUserSockets(opponentId);
+      opponentSockets.forEach((sid) => {
+        io.to(sid).emit('ttt_result', { gameId, winner, from: userId });
+      });
+    });
+
     // Mark messages as read
     socket.on('mark_read', async ({ conversationId, senderId }) => {
       try {

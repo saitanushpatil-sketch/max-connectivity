@@ -29,9 +29,6 @@ const userSchema = new mongoose.Schema({
     type: String,
     minlength: 6,
     select: false,
-    required: function () {
-      return !this.googleId;
-    },
   },
   displayName: {
     type: String,
@@ -83,6 +80,15 @@ const userSchema = new mongoose.Schema({
   quizHighScore: { type: Number, default: 0 },
   reactionBestAvg: { type: Number, default: null },
   memeMatchBestTime: { type: Number, default: null },
+  snakeHighScore: { type: Number, default: 0 },
+  game2048HighScore: { type: Number, default: 0 },
+  simonHighScore: { type: Number, default: 0 },
+  whackHighScore: { type: Number, default: 0 },
+  typerBestWpm: { type: Number, default: 0 },
+  wordleHighScore: { type: Number, default: 0 },
+  flappyHighScore: { type: Number, default: 0 },
+  desiQuizHighScore: { type: Number, default: 0 },
+  tttWins: { type: Number, default: 0 },
   // Friend list (stored as references for fast lookup)
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   // Web Push subscription (endpoint + keys)

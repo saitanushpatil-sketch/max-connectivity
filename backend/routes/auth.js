@@ -2,10 +2,22 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const { signup, login, googleAuth, getMe, updateProfile } = require('../controllers/authController');
+const {
+  sendSignupOTP,
+  verifySignupOTP,
+  signup,
+  sendLoginOTP,
+  loginVerify,
+  googleAuth,
+  getMe,
+  updateProfile,
+} = require('../controllers/authController');
 
+router.post('/send-otp', sendSignupOTP);
+router.post('/verify-otp', verifySignupOTP);
 router.post('/signup', signup);
-router.post('/login', login);
+router.post('/login-otp', sendLoginOTP);
+router.post('/login-verify', loginVerify);
 router.post('/google', googleAuth);
 router.get('/me', auth, getMe);
 router.put('/profile', auth, updateProfile);
