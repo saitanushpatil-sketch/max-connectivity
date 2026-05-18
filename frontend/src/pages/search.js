@@ -5,6 +5,7 @@ import api from '../utils/api';
 import useAuthStore from '../context/authStore';
 
 export const dynamic = 'force-dynamic';
+export const getServerSideProps = async () => ({ props: {} });
 
 export default function Search() {
   const { user } = useAuthStore();
