@@ -27,8 +27,10 @@ export default function App({ Component, pageProps }) {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
-    init();
-  }, [init]);
+    init().catch(() => {
+      router.replace('/login');
+    });
+  }, [init, router]);
 
   useEffect(() => {
     try {
@@ -46,7 +48,9 @@ export default function App({ Component, pageProps }) {
     if (!isAuthenticated && !isPublic && !hasToken) {
       router.replace('/login');
     }
-  }, [isAuthenticated, isLoading, router.pathname, showSplash, router]);
+  }, [isAuthenticated, isLoading, router.pathname, showSplash, router]).catch(() => {
+    router.replace('/login');
+  });
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
