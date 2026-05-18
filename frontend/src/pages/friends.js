@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Avatar from '../components/ui/Avatar';
 import BottomNav from '../components/ui/BottomNav';
