@@ -1,56 +1,30 @@
+import { SessionProvider } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { SessionProvider } from 'next-auth/react';
-import { AnimatePresence, motion } from 'framer-motion';
 import useAuthStore from '../context/authStore';
-import { hasStoredToken } from '../utils/api';
-import SplashScreen from '../components/ui/SplashScreen';
-import PushNotificationInit from '../components/PushNotificationInit';
-import CallInit from '../components/call/CallInit';
-import { ToastProvider } from '../hooks/useToast';
-import ToastContainer from '../components/ui/Toast';
 import '../styles/globals.css';
 
-const PUBLIC_ROUTES = ['/login', '/signup', '/offline', '/auth/google-sync', '/search', '/call/[friendId]'];
-const SPLASH_KEY = 'max_splash_seen';
+const PUBLIC_ROUTES = [
+  '/login', '/signup', '/offline', 
+  '/auth/google-sync', '/api/auth/callback/google'
+];
 
-const pageVariants = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: 8 },
-};
-
-export default function App({ Component, pageProps }) {
+export default function App({ Component, pageProps: { session, ...pageProps } }) {
   const router = useRouter();
   const { init, isAuthenticated, isLoading } = useAuthStore();
-  const [showSplash, setShowSplash] = useState(null);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [appReady, setAppReady] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && init) {
-      init().catch(() => {
-        router.replace('/login');
-      });
-    }
-  }, [init, router]);
-
-  useEffect(() => {
-    try {
-      const seen = sessionStorage.getItem(SPLASH_KEY);
-      setShowSplash(seen !== '1');
-    } catch {
-      setShowSplash(false);
-    }
+    init().finally(() => setAppReady(true));
   }, []);
 
   useEffect(() => {
-    if (isLoading || showSplash) return;
-    const isPublic = PUBLIC_ROUTES.includes(router.pathname) || router.pathname.startsWith('/call/');
-    const hasToken = hasStoredToken();
-    if (!isAuthenticated && !isPublic && !hasToken) {
-      router.replace('/login').catch(() => {});
+    if (!appReady || isLoading) return;
+    const isPublic = PUBLIC_ROUTES.some(r => router.pathname.startsWith(r));
+    if (!isAuthenticated && !isPublic) {
+      router.replace('/login');
     }
-  }, [isAuthenticated, isLoading, router.pathname, showSplash, router]);
+  }, [appReady, isAuthenticated, isLoading, router.pathname]);
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -58,91 +32,59 @@ export default function App({ Component, pageProps }) {
     }
   }, []);
 
-  useEffect(() => {
-    const onRouteComplete = () => setIsInitialLoad(false);
-    const onRouteError = () => setIsInitialLoad(false);
-    router.events.on('routeChangeComplete', onRouteComplete);
-    router.events.on('routeChangeError', onRouteError);
-    return () => {
-      router.events.off('routeChangeComplete', onRouteComplete);
-      router.events.off('routeChangeError', onRouteError);
-    };
-  }, [router.events, router]);
-
-  const handleSplashComplete = () => {
-    try {
-      sessionStorage.setItem(SPLASH_KEY, '1');
-    } catch {
-      /* ignore */
-    }
-    setShowSplash(false);
-    setIsInitialLoad(false);
-  };
-
-  if (showSplash === null) {
-    return <div className="fixed inset-0" style={{ background: '#0A0A0F' }} />;
-  }
-
-  if (showSplash && isInitialLoad) {
-    return <SplashScreen onComplete={handleSplashComplete} />;
-  }
-
-  if (isLoading) {
+  if (!appReady || isLoading) {
     return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center hud-bg">
-        <div className="flex flex-col items-center gap-4">
-          <div
-            className="w-16 h-16 flex items-center justify-center rounded-sm font-heading font-bold text-2xl"
-            style={{
-              border: '2px solid #00F5FF',
-              color: '#00F5FF',
-              boxShadow: '0 0 30px rgba(0,245,255,0.4)',
-              animation: 'glowPulse 3s ease-in-out infinite',
-            }}
-          >
+      <SessionProvider session={session}>
+        <div style={{
+          position: 'fixed', inset: 0,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          background: '#0A0A0F'
+        }}>
+          <div style={{
+            width: 64, height: 64,
+            border: '2px solid #00F5FF',
+            borderRadius: 4,
+            display: 'flex', alignItems: 'center',
+            justifyContent: 'center',
+            color: '#00F5FF',
+            fontFamily: 'Rajdhani, sans-serif',
+            fontWeight: 700, fontSize: 18,
+            boxShadow: '0 0 30px rgba(0,245,255,0.4)'
+          }}>
             MAX
           </div>
-          <div className="flex gap-1">
-            <span className="typing-dot" />
-            <span className="typing-dot" />
-            <span className="typing-dot" />
+          <div style={{ display: 'flex', gap: 4, marginTop: 16 }}>
+            {[0,1,2].map(i => (
+              <div key={i} style={{
+                width: 6, height: 6,
+                borderRadius: '50%',
+                background: '#00F5FF',
+                animation: `bounceDot 1.4s ${i * 0.2}s infinite ease-in-out` 
+              }} />
+            ))}
           </div>
-          <span className="font-mono text-xs tracking-widest" style={{ color: '#6B6B8A' }}>
-            INITIALIZING SYSTEMS...
-          </span>
         </div>
-      </div>
+      </SessionProvider>
     );
   }
 
   return (
-    <SessionProvider>
-      <ToastProvider>
-        <PushNotificationInit />
-        <CallInit />
-        <ToastContainer />
-        <div className="fixed inset-0 flex justify-center" style={{ background: '#0A0A0F' }}>
-          <div className="relative w-full max-w-app h-full flex flex-col overflow-hidden hud-bg scan-line-container">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={router.pathname}
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={{ duration: 0.2 }}
-                className="flex flex-col flex-1 min-h-0 overflow-hidden"
-              >
-                <Component {...pageProps} />
-              </motion.div>
-            </AnimatePresence>
-          </div>
+    <SessionProvider session={session}>
+      <div style={{
+        position: 'fixed', inset: 0,
+        display: 'flex', justifyContent: 'center',
+        background: '#0A0A0F'
+      }}>
+        <div style={{
+          position: 'relative', width: '100%',
+          maxWidth: 448, height: '100%',
+          display: 'flex', flexDirection: 'column',
+          overflow: 'hidden'
+        }}>
+          <Component {...pageProps} />
         </div>
-      </ToastProvider>
+      </div>
     </SessionProvider>
   );
 }
-
-App.getInitialProps = async () => {
-  return { pageProps: {} };
-};

@@ -28,90 +28,72 @@ const useSocket = (handlers = {}) => {
 
     const socket = socketInstance;
 
-    const on = (event, fn) => socket.on(event, fn);
-    const off = (event, fn) => socket.off(event, fn);
-
     const handleConnect = () => handlersRef.current.onConnect?.();
     const handleDisconnect = () => handlersRef.current.onDisconnect?.();
-    const handleReceiveMessage = (data) => handlersRef.current.onReceiveMessage?.(data);
-    const handleNewNotification = (data) => handlersRef.current.onNewMessageNotification?.(data);
-    const handleUserTyping = (data) => handlersRef.current.onUserTyping?.(data);
-    const handleUserStopTyping = (data) => handlersRef.current.onUserStopTyping?.(data);
-    const handleUserStatus = (data) => handlersRef.current.onUserStatus?.(data);
-    const handleMessageReacted = (data) => handlersRef.current.onMessageReacted?.(data);
-    const handleMessagesRead = (data) => handlersRef.current.onMessagesRead?.(data);
-    const handleTttChallenge = (data) => handlersRef.current.onTttChallenge?.(data);
-    const handleTttMove = (data) => handlersRef.current.onTttMove?.(data);
-    const handleTttResult = (data) => handlersRef.current.onTttResult?.(data);
-    const handleCallIncoming = (data) => handlersRef.current.onCallIncoming?.(data);
-    const handleCallAnswered = (data) => handlersRef.current.onCallAnswered?.(data);
-    const handleIceCandidate = (data) => handlersRef.current.onIceCandidate?.(data);
-    const handleCallEnded = (data) => handlersRef.current.onCallEnded?.(data);
-    const handleCallRejected = (data) => handlersRef.current.onCallRejected?.(data);
-    const handleCallBusy = (data) => handlersRef.current.onCallBusy?.(data);
 
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
-
-    useEffect(() => {
-      if (!socket) return;
-
-      const handleReceiveMessage = (data) => handlersRef.current.onReceiveMessage?.(data);
-      const handleUserTyping = (data) => handlersRef.current.onUserTyping?.(data);
-      const handleUserStopTyping = (data) => handlersRef.current.onUserStopTyping?.(data);
-      const handleUserStatus = (data) => handlersRef.current.onUserStatus?.(data);
-      const handleMessageReacted = (data) => handlersRef.current.onMessageReacted?.(data);
-      const handleMessagesRead = (data) => handlersRef.current.onMessagesRead?.(data);
-      const handleNewMessageNotification = (data) => handlersRef.current.onNewMessageNotification?.(data);
-      const handleCallIncoming = (data) => handlersRef.current.onCallIncoming?.(data);
-      const handleCallAnswered = (data) => handlersRef.current.onCallAnswered?.(data);
-      const handleCallEnded = (data) => handlersRef.current.onCallEnded?.(data);
-      const handleCallRejected = (data) => handlersRef.current.onCallRejected?.(data);
-      const handleCallIce = (data) => handlersRef.current.onIceCandidate?.(data);
-      const handleTttChallenge = (data) => handlersRef.current.onTttChallenge?.(data);
-      const handleTttMove = (data) => handlersRef.current.onTttMove?.(data);
-      const handleTttResult = (data) => handlersRef.current.onTttResult?.(data);
-
-      socket.on('receive_message', handleReceiveMessage);
-      socket.on('user_typing', handleUserTyping);
-      socket.on('user_stop_typing', handleUserStopTyping);
-      socket.on('user_status', handleUserStatus);
-      socket.on('message_reacted', handleMessageReacted);
-      socket.on('messages_read', handleMessagesRead);
-      socket.on('new_message_notification', handleNewMessageNotification);
-      socket.on('call:incoming', handleCallIncoming);
-      socket.on('call:answered', handleCallAnswered);
-      socket.on('call:ended', handleCallEnded);
-      socket.on('call:rejected', handleCallRejected);
-      socket.on('call:ice', handleCallIce);
-      socket.on('ttt_challenge', handleTttChallenge);
-      socket.on('ttt_move', handleTttMove);
-      socket.on('ttt_result', handleTttResult);
-
-      return () => {
-        socket.off('receive_message', handleReceiveMessage);
-        socket.off('user_typing', handleUserTyping);
-        socket.off('user_stop_typing', handleUserStopTyping);
-        socket.off('user_status', handleUserStatus);
-        socket.off('message_reacted', handleMessageReacted);
-        socket.off('messages_read', handleMessagesRead);
-        socket.off('new_message_notification', handleNewMessageNotification);
-        socket.off('call:incoming', handleCallIncoming);
-        socket.off('call:answered', handleCallAnswered);
-        socket.off('call:ended', handleCallEnded);
-        socket.off('call:rejected', handleCallRejected);
-        socket.off('call:ice', handleCallIce);
-        socket.off('ttt_challenge', handleTttChallenge);
-        socket.off('ttt_move', handleTttMove);
-        socket.off('ttt_result', handleTttResult);
-      };
-    }, [socket, handlersRef]);
 
     return () => {
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
     };
   }, [isAuthenticated, token]);
+
+  useEffect(() => {
+    const socket = socketInstance;
+    if (!socket) return;
+
+    const handleReceiveMessage = (data) => handlersRef.current.onReceiveMessage?.(data);
+    const handleUserTyping = (data) => handlersRef.current.onUserTyping?.(data);
+    const handleUserStopTyping = (data) => handlersRef.current.onUserStopTyping?.(data);
+    const handleUserStatus = (data) => handlersRef.current.onUserStatus?.(data);
+    const handleMessageReacted = (data) => handlersRef.current.onMessageReacted?.(data);
+    const handleMessagesRead = (data) => handlersRef.current.onMessagesRead?.(data);
+    const handleNewMessageNotification = (data) => handlersRef.current.onNewMessageNotification?.(data);
+    const handleCallIncoming = (data) => handlersRef.current.onCallIncoming?.(data);
+    const handleCallAnswered = (data) => handlersRef.current.onCallAnswered?.(data);
+    const handleCallEnded = (data) => handlersRef.current.onCallEnded?.(data);
+    const handleCallRejected = (data) => handlersRef.current.onCallRejected?.(data);
+    const handleCallIce = (data) => handlersRef.current.onIceCandidate?.(data);
+    const handleTttChallenge = (data) => handlersRef.current.onTttChallenge?.(data);
+    const handleTttMove = (data) => handlersRef.current.onTttMove?.(data);
+    const handleTttResult = (data) => handlersRef.current.onTttResult?.(data);
+
+    socket.on('receive_message', handleReceiveMessage);
+    socket.on('user_typing', handleUserTyping);
+    socket.on('user_stop_typing', handleUserStopTyping);
+    socket.on('user_status', handleUserStatus);
+    socket.on('message_reacted', handleMessageReacted);
+    socket.on('messages_read', handleMessagesRead);
+    socket.on('new_message_notification', handleNewMessageNotification);
+    socket.on('call:incoming', handleCallIncoming);
+    socket.on('call:answered', handleCallAnswered);
+    socket.on('call:ended', handleCallEnded);
+    socket.on('call:rejected', handleCallRejected);
+    socket.on('call:ice', handleCallIce);
+    socket.on('ttt_challenge', handleTttChallenge);
+    socket.on('ttt_move', handleTttMove);
+    socket.on('ttt_result', handleTttResult);
+
+    return () => {
+      socket.off('receive_message', handleReceiveMessage);
+      socket.off('user_typing', handleUserTyping);
+      socket.off('user_stop_typing', handleUserStopTyping);
+      socket.off('user_status', handleUserStatus);
+      socket.off('message_reacted', handleMessageReacted);
+      socket.off('messages_read', handleMessagesRead);
+      socket.off('new_message_notification', handleNewMessageNotification);
+      socket.off('call:incoming', handleCallIncoming);
+      socket.off('call:answered', handleCallAnswered);
+      socket.off('call:ended', handleCallEnded);
+      socket.off('call:rejected', handleCallRejected);
+      socket.off('call:ice', handleCallIce);
+      socket.off('ttt_challenge', handleTttChallenge);
+      socket.off('ttt_move', handleTttMove);
+      socket.off('ttt_result', handleTttResult);
+    };
+  }, [handlersRef]);
 
   const emitTttChallenge = useCallback((opponentId, gameId) => {
     socketInstance?.emit('ttt_challenge', { opponentId, gameId });
