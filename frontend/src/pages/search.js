@@ -4,6 +4,8 @@ import BottomNav from '../components/ui/BottomNav';
 import api from '../utils/api';
 import useAuthStore from '../context/authStore';
 
+export const dynamic = 'force-dynamic';
+
 export default function Search() {
   const { user } = useAuthStore();
   const [query, setQuery] = useState('');
@@ -14,13 +16,23 @@ export default function Search() {
   const [actioning, setActioning] = useState({});
 
   useEffect(() => {
-    api.get('/friends').then(r => setFriends(r.data.friends?.map(f => f._id) || [])).catch(() => {});
-    api.get('/friends/pending').then(r => {
-      setPending({
-        incoming: r.data.incoming?.map(req => req.sender._id) || [],
-        outgoing: r.data.outgoing?.map(req => ({ id: req._id, receiverId: req.receiver._id })) || [],
-      });
-    }).catch(() => {});
+    const fetchFriends = async () => {
+      try {
+        const r = await api.get('/friends');
+        setFriends(r.data.friends?.map(f => f._id) || []);
+      } catch (_) {}
+    };
+    const fetchPending = async () => {
+      try {
+        const r = await api.get('/friends/pending');
+        setPending({
+          incoming: r.data.incoming?.map(req => req.sender._id) || [],
+          outgoing: r.data.outgoing?.map(req => ({ id: req._id, receiverId: req.receiver._id })) || [],
+        });
+      } catch (_) {}
+    };
+    fetchFriends();
+    fetchPending();
   }, []);
 
   const search = useCallback(async (q) => {
