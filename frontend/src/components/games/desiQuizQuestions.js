@@ -1,0 +1,31 @@
+/** @typedef {{ movie: string, color: string, q: string, options: string[], answer: number }} DesiQ */
+
+/** @type {DesiQ[]} */
+export const ALL_QUESTIONS = [
+  { movie: 'RRR', color: '#8B0000', q: 'RRR\'s Oscar-winning song title?', options: ['Naatu Naatu', 'Komuram Bheemudo', 'Dosti', 'Sholay'], answer: 0 },
+  { movie: 'RRR', color: '#B91C1C', q: 'Who plays Komaram Bheem in RRR?', options: ['Ram Charan', 'NTR Jr', 'Ajay Devgn', 'Alia Bhatt'], answer: 1 },
+  { movie: 'Baahubali', color: '#7C2D12', q: 'Baahubali director?', options: ['SS Rajamouli', 'Sukumar', 'Trivikram', 'Boyapati'], answer: 0 },
+  { movie: 'Baahubali', color: '#92400E', q: 'Who plays Amarendra Baahubali?', options: ['Prabhas', 'Rana', 'Satyaraj', 'Nassar'], answer: 0 },
+  { movie: 'Pushpa', color: '#166534', q: 'Pushpa famous line?', options: ['Taggedhe Le', 'Thaggede Le', 'Jai Balayya', 'Attarintiki'], answer: 1 },
+  { movie: 'KGF', color: '#854D0E', q: 'KGF Chapter 1 is set mainly in?', options: ['Mumbai', 'Kolar Gold Fields', 'Hyderabad', 'Delhi'], answer: 1 },
+  { movie: 'KGF', color: '#A16207', q: 'Rocky Bhai is played by?', options: ['Yash', 'Prabhas', 'Dhanush', 'Vijay'], answer: 0 },
+  { movie: 'Vikram', color: '#4C1D95', q: 'Vikram (2022) lead star?', options: ['Kamal Haasan', 'Vijay', 'Ajith', 'Suriya'], answer: 0 },
+  { movie: 'Kalki 2898 AD', color: '#0E7490', q: 'Kalki 2898 AD features which Telugu superstar?', options: ['Prabhas', 'NTR Jr', 'Ram Charan', 'Allu Arjun'], answer: 0 },
+  { movie: 'Salaar', color: '#1E3A5F', q: 'Salaar lead actor?', options: ['Prabhas', 'Yash', 'Mahesh Babu', 'NTR Jr'], answer: 0 },
+  { movie: 'HanuMan', color: '#B45309', q: 'HanuMan draws from which mythology?', options: ['Greek', 'Hindu', 'Norse', 'Egyptian'], answer: 1 },
+  { movie: 'DDLJ', color: '#BE185D', q: 'DDLJ lead actor?', options: ['Shah Rukh Khan', 'Salman', 'Aamir', 'Akshay'], answer: 0 },
+  { movie: '3 Idiots', color: '#0369A1', q: 'Who played Rancho / Phunsukh?', options: ['Aamir Khan', 'Shah Rukh', 'Salman', 'Hrithik'], answer: 0 },
+  { movie: 'PK', color: '#15803D', q: 'PK director?', options: ['Rajkumar Hirani', 'Rohit Shetty', 'Imtiaz Ali', 'Anurag Kashyap'], answer: 0 },
+  { movie: 'Dangal', color: '#0F766E', q: 'Dangal is about which sport?', options: ['Cricket', 'Wrestling', 'Kabaddi', 'Hockey'], answer: 1 },
+  { movie: 'Bajrangi Bhaijaan', color: '#C2410C', q: 'Lead of Bajrangi Bhaijaan?', options: ['Salman Khan', 'Aamir', 'SRK', 'Akshay'], answer: 0 },
+  { movie: 'PK', color: '#047857', q: 'PK protagonist is portrayed as?', options: ['Curious alien-like outsider', 'Spy', 'Robot', 'Ghost'], answer: 0 },
+  { movie: 'RRR', color: '#991B1B', q: 'RRR friendship duo?', options: ['Ram & Bheem arc', 'Two strangers only', 'Brothers', 'Cousins'], answer: 0 },
+  { movie: 'Baahubali', color: '#78350F', q: 'Baahubali antagonist Bhallaladeva played by?', options: ['Rana Daggubati', 'Prabhas', 'Nassar', 'Satyaraj'], answer: 0 },
+  { movie: 'Pushpa', color: '#14532D', q: 'Pushpa lead actor?', options: ['Allu Arjun', 'Ram Charan', 'Vijay D.', 'NTR Jr'], answer: 0 },
+  { movie: 'KGF Hindi', color: '#713F12', q: 'KGF found pan-India fame partly via?', options: ['Hindi dub + style', 'Only OTT', 'Silent film', 'Anime'], answer: 0 },
+  { movie: 'Vikram', color: '#5B21B6', q: 'Vikram (2022) director?', options: ['Lokesh Kanagaraj', 'Atlee', 'Shankar', 'Mani Ratnam'], answer: 0 },
+  { movie: '3 Idiots', color: '#075985', q: '3 Idiots satirizes?', options: ['Engineering college pressure', 'Medical exams', 'IAS only', 'Sports quota'], answer: 0 },
+  { movie: 'Dangal', color: '#115E59', q: 'Aamir\'s character in Dangal is?', options: ['Mahavir Phogat', 'Coach Kabir', 'Sultan', 'PK'], answer: 0 },
+  { movie: 'DDLJ', color: '#9D174D', q: 'DDLJ female lead?', options: ['Kajol', 'Madhuri', 'Juhi', 'Rani'], answer: 0 },
+  { movie: 'HanuMan', color: '#C2410C', q: 'HanuMan is primarily which industry film?', options: ['Telugu', 'Tamil', 'Hindi', 'Kannada'], answer: 0 },
+];

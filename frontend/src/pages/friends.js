@@ -114,14 +114,14 @@ export default function Friends() {
                     MSG
                   </button>
                   <button
-                    onClick={() => router.push({ pathname: '/battle', query: { challenge: f._id } })}
+                    onClick={() => router.push('/camera')}
                     className="hud-btn px-2 py-1.5 rounded-sm text-[10px]"
-                    style={{ background: 'rgba(255,0,110,0.1)', border: '1px solid rgba(255,0,110,0.35)', color: '#FF006E' }}
+                    style={{ background: 'rgba(0,245,255,0.1)', border: '1px solid rgba(0,245,255,0.35)', color: '#00F5FF' }}
                   >
-                    ⚔️
+                    📸
                   </button>
                   <button
-                    onClick={() => router.push({ pathname: '/games', query: { game: 'ttt', opponent: f._id, name: f.displayName || f.username } })}
+                    onClick={() => router.push({ pathname: '/games', query: { game: 'ttt', opponent: f._id, name: f.displayName || f.username, host: '1' } })}
                     className="hud-btn px-2 py-1.5 rounded-sm text-[10px]"
                     style={{ background: 'rgba(0,245,255,0.1)', border: '1px solid rgba(0,245,255,0.35)', color: '#00F5FF' }}
                   >

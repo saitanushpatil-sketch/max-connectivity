@@ -6,6 +6,7 @@ import useAuthStore from '../context/authStore';
 import usePushNotifications from '../hooks/usePushNotifications';
 import api from '../utils/api';
 import Skeleton from '../components/ui/Skeleton';
+import { getGalleryCount } from '../utils/galleryStorage';
 
 const COLORS = ['#00F5FF', '#FF006E', '#06D6A0', '#FFB703', '#8B5CF6', '#F97316', '#EC4899'];
 const BADGES = {
@@ -27,7 +28,15 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [pushLoading, setPushLoading] = useState(false);
+  const [galleryCount, setGalleryCount] = useState(0);
   const { isSupported, isSubscribed, subscribe, unsubscribe, checkSubscribed } = usePushNotifications();
+
+  useEffect(() => {
+    setGalleryCount(getGalleryCount());
+    const onGal = () => setGalleryCount(getGalleryCount());
+    window.addEventListener('max-gallery-updated', onGal);
+    return () => window.removeEventListener('max-gallery-updated', onGal);
+  }, []);
 
   useEffect(() => {
     if (user) checkSubscribed();
@@ -102,28 +111,29 @@ export default function Profile() {
         </div>
 
         <div className="p-4 rounded-sm" style={{ background: '#12121A', border: '1px solid #252535' }}>
-          <div className="font-mono text-[10px] tracking-widest mb-3" style={{ color: '#6B6B8A' }}>// BATTLE STATS</div>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: 'WINS', val: user.battlesWon || 0, color: '#06D6A0' },
-              { label: 'LOSSES', val: user.battlesLost || 0, color: '#FF006E' },
-              { label: 'STREAK', val: user.battleWinStreak || 0, color: '#FFB703' },
-            ].map(({ label, val, color }) => (
-              <div key={label} className="text-center py-3 rounded-sm" style={{ background: '#0A0A0F', border: '1px solid #252535' }}>
-                <span className="font-heading text-xl font-bold" style={{ color }}>{val}</span>
-                <span className="block font-mono text-[9px] tracking-widest mt-1" style={{ color: '#6B6B8A' }}>{label}</span>
-              </div>
-            ))}
+          <div className="font-mono text-[10px] tracking-widest mb-3" style={{ color: '#6B6B8A' }}>// CAMERA</div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="text-center py-3 rounded-sm" style={{ background: '#0A0A0F', border: '1px solid #252535' }}>
+              <span className="font-heading text-xl font-bold" style={{ color: '#00F5FF' }}>{galleryCount}</span>
+              <span className="block font-mono text-[9px] tracking-widest mt-1" style={{ color: '#6B6B8A' }}>GALLERY PHOTOS</span>
+            </div>
+            <div className="text-center py-3 rounded-sm" style={{ background: '#0A0A0F', border: '1px solid #252535' }}>
+              <span className="font-heading text-xl font-bold" style={{ color: '#FFB703' }}>📸</span>
+              <span className="block font-mono text-[9px] tracking-widest mt-1" style={{ color: '#6B6B8A' }}>CAMERA</span>
+            </div>
           </div>
         </div>
 
         <div className="p-4 rounded-sm" style={{ background: '#12121A', border: '1px solid #252535' }}>
-          <div className="font-mono text-[10px] tracking-widest mb-3" style={{ color: '#6B6B8A' }}>// GAME HIGH SCORES</div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="font-mono text-[10px] tracking-widest mb-3" style={{ color: '#6B6B8A' }}>// ARCADE SCORES</div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {[
-              { label: 'QUIZ', val: `${user.quizHighScore || 0}/10`, color: '#00F5FF' },
-              { label: 'REACT', val: user.reactionBestAvg ? `${user.reactionBestAvg}ms` : '—', color: '#06D6A0' },
-              { label: 'MATCH', val: user.memeMatchBestTime ? `${user.memeMatchBestTime}s` : '—', color: '#FFB703' },
+              { label: '2048', val: user.game2048HighScore || 0, color: '#FFB703' },
+              { label: 'REACTION', val: user.reactionBestAvg ? `${user.reactionBestAvg}ms` : '—', color: '#06D6A0' },
+              { label: 'DESI QUIZ', val: `${user.desiQuizHighScore || 0}/10`, color: '#00F5FF' },
+              { label: 'TTT WINS', val: user.tttWins || 0, color: '#FF006E' },
+              { label: 'CAR RACER', val: user.carRacerHighScore || 0, color: '#F97316' },
+              { label: 'SPACE', val: user.spaceShooterHighScore || 0, color: '#8B5CF6' },
             ].map(({ label, val, color }) => (
               <div key={label} className="text-center py-3 rounded-sm" style={{ background: '#0A0A0F', border: '1px solid #252535' }}>
                 <span className="font-heading text-lg font-bold" style={{ color }}>{val}</span>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import api from '../../utils/api';
 import useSocket from '../../hooks/useSocket';
 import hapticTap from '../../utils/haptic';
+import { getGalleryCount } from '../../utils/galleryStorage';
 
 const NAV = [
   { href: '/chats', label: 'COMMS', icon: (active) => (
@@ -17,9 +18,9 @@ const NAV = [
       <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
     </svg>
   )},
-  { href: '/battle', label: 'BATTLE', icon: (active) => (
-    <span style={{ fontSize: 18, filter: active ? 'drop-shadow(0 0 6px #FF006E)' : 'none' }}>⚔️</span>
-  )},
+  { href: '/camera', label: 'CAM', icon: (active) => (
+    <span style={{ fontSize: 18, filter: active ? 'drop-shadow(0 0 6px #00F5FF)' : 'none' }}>📸</span>
+  ), badge: 'gallery' },
   { href: '/games', label: 'GAMES', icon: (active) => (
     <span style={{ fontSize: 18, filter: active ? 'drop-shadow(0 0 6px #00F5FF)' : 'none' }}>🎮</span>
   )},
@@ -34,15 +35,25 @@ export default function BottomNav() {
   const router = useRouter();
   const [unread, setUnread] = useState(0);
   const [pendingRequests, setPendingRequests] = useState(0);
+  const [galleryCount, setGalleryCount] = useState(0);
 
   const fetchCounts = async () => {
     try {
       const pendRes = await api.get('/friends/pending');
       setPendingRequests(pendRes.data.incoming?.length || 0);
     } catch (_) {}
+    setGalleryCount(getGalleryCount());
   };
 
-  useEffect(() => { fetchCounts(); }, [router.pathname]);
+  useEffect(() => {
+    fetchCounts();
+  }, [router.pathname]);
+
+  useEffect(() => {
+    const onGal = () => setGalleryCount(getGalleryCount());
+    window.addEventListener('max-gallery-updated', onGal);
+    return () => window.removeEventListener('max-gallery-updated', onGal);
+  }, []);
 
   useSocket({
     onNewMessageNotification: () => {
@@ -68,10 +79,11 @@ export default function BottomNav() {
     >
       <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, #00F5FF44, transparent)' }} />
       <div className="flex items-center justify-around px-1 py-2">
-        {NAV.map(({ href, label, icon }) => {
+        {NAV.map(({ href, label, icon, badge }) => {
           const active = router.pathname === href || router.pathname.startsWith(`${href}/`);
           const isComms = href === '/chats';
           const isSquad = href === '/friends';
+          const isCam = badge === 'gallery';
           return (
             <Link
               key={href}
@@ -86,6 +98,11 @@ export default function BottomNav() {
                 )}
                 {isSquad && pendingRequests > 0 && (
                   <span className="unread-badge absolute -top-2 -right-2" style={{ background: '#FF006E' }}>{pendingRequests}</span>
+                )}
+                {isCam && galleryCount > 0 && (
+                  <span className="unread-badge absolute -top-2 -right-2" style={{ background: '#00F5FF', color: '#0A0A0F' }}>
+                    {galleryCount > 9 ? '9+' : galleryCount}
+                  </span>
                 )}
               </div>
               <span

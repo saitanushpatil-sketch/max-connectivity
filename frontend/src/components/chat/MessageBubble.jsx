@@ -1,6 +1,7 @@
 import { useState, memo, useRef, useCallback } from 'react';
 import Avatar from '../ui/Avatar';
 import MemeImage from '../ui/MemeImage';
+import { saveGalleryPhoto } from '../../utils/galleryStorage';
 
 const EMOJIS = ['❤️', '😂', '🔥', '👀', '💀', '🤯'];
 
@@ -13,6 +14,7 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
   const [showActions, setShowActions] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
+  const [lightbox, setLightbox] = useState(false);
   const pressTimerRef = useRef(null);
 
   const isDeleted = message.deletedForEveryone;
@@ -45,6 +47,13 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
     link.href = message.content;
     link.download = `max-meme-${Date.now()}.png`;
     link.click();
+    setShowDownload(false);
+    setShowActions(false);
+  };
+
+  const handleSaveGallery = () => {
+    if (!isBase64Meme) return;
+    saveGalleryPhoto(message.content, message.memeData?.name || '');
     setShowDownload(false);
     setShowActions(false);
   };
@@ -84,12 +93,14 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
               ⊘ This message was deleted
             </span>
           ) : isBase64Meme ? (
-            <img
-              src={message.content}
-              alt={message.memeData?.name || 'Meme'}
-              className="rounded-sm"
-              style={{ maxWidth: 250, width: '100%', height: 'auto' }}
-            />
+            <button type="button" className="p-0 border-0 bg-transparent" onClick={() => setLightbox(true)}>
+              <img
+                src={message.content}
+                alt={message.memeData?.name || 'Meme'}
+                className="rounded-sm"
+                style={{ maxWidth: 250, width: '100%', height: 'auto' }}
+              />
+            </button>
           ) : message.type === 'meme' ? (
             <div>
               <div className="relative rounded-sm overflow-hidden" style={{ maxHeight: 200, width: '100%', minHeight: 80 }}>
@@ -148,14 +159,24 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
             style={{ background: '#1A1A26', border: '1px solid #252535' }}
           >
             {showDownload && (
-              <button
-                type="button"
-                className="text-xs px-2 py-1 rounded-sm font-mono active:scale-95"
-                style={{ color: '#FFB703', fontSize: 11 }}
-                onClick={handleDownload}
-              >
-                ⬇ SAVE
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="text-xs px-2 py-1 rounded-sm font-mono active:scale-95"
+                  style={{ color: '#06D6A0', fontSize: 11 }}
+                  onClick={handleSaveGallery}
+                >
+                  📸 GALLERY
+                </button>
+                <button
+                  type="button"
+                  className="text-xs px-2 py-1 rounded-sm font-mono active:scale-95"
+                  style={{ color: '#FFB703', fontSize: 11 }}
+                  onClick={handleDownload}
+                >
+                  ⬇ SAVE
+                </button>
+              </>
             )}
             <button
               type="button"
@@ -220,6 +241,17 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
           </div>
         )}
       </div>
+
+      {lightbox && isBase64Meme && (
+        <button
+          type="button"
+          className="fixed inset-0 z-[200] flex items-center justify-center p-2 border-0"
+          style={{ background: 'rgba(0,0,0,0.92)' }}
+          onClick={() => setLightbox(false)}
+        >
+          <img src={message.content} alt="" className="max-w-full max-h-full object-contain" />
+        </button>
+      )}
     </div>
   );
 }
