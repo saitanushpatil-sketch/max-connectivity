@@ -1,67 +1,84 @@
-const Meme = require('../models/Meme');
 const User = require('../models/User');
 const ReactionScore = require('../models/ReactionScore');
-const TyperScore = require('../models/TyperScore');
 
-const shuffle = (arr) => {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
+const GAME_FIELD_MAP = {
+  '2048': 'score2048',
+  reaction: 'scoreReaction',
+  quiz: 'scoreDesiQuiz',
+  desi: 'scoreDesiQuiz',
+  tictactoe: 'scoreTicTacToe',
+  ttt: 'scoreTicTacToe',
+  carracer: 'scoreCarRacer',
+  car: 'scoreCarRacer',
+  spaceshooter: 'scoreSpaceShooter',
+  space: 'scoreSpaceShooter',
 };
 
-// GET /api/games/quiz/questions
-exports.getQuizQuestions = async (req, res) => {
-  try {
-    const memes = await Meme.aggregate([{ $sample: { size: 10 } }]);
-    if (memes.length < 4) {
-      return res.status(400).json({ error: 'Not enough memes in database' });
-    }
+const LEGACY_FIELD_MAP = {
+  score2048: 'game2048HighScore',
+  scoreReaction: 'reactionBestAvg',
+  scoreDesiQuiz: 'desiQuizHighScore',
+  scoreTicTacToe: 'tttWins',
+  scoreCarRacer: 'carRacerHighScore',
+  scoreSpaceShooter: 'spaceShooterHighScore',
+};
 
-    const allNames = await Meme.find().select('name category').limit(300).lean();
+const getScoreField = (game) => GAME_FIELD_MAP[game];
 
-    const questions = await Promise.all(
-      memes.map(async (meme) => {
-        const categoryPool = allNames
-          .filter((m) => m.category === meme.category && m.name !== meme.name)
-          .map((m) => m.name);
-        const fallbackPool = allNames.filter((m) => m.name !== meme.name).map((m) => m.name);
-        const source = categoryPool.length >= 3 ? categoryPool : fallbackPool;
-        const wrong = shuffle(source).slice(0, 3);
-        const options = shuffle([meme.name, ...wrong]);
-        return {
-          memeId: meme._id,
-          url: meme.url,
-          category: meme.category,
-          options,
-          correctAnswer: meme.name,
-        };
-      })
-    );
-
-    res.json({ questions });
-  } catch (err) {
-    console.error('Quiz questions error:', err);
-    res.status(500).json({ error: 'Failed to load quiz' });
+const syncLegacyScore = (user, field, score) => {
+  const legacy = LEGACY_FIELD_MAP[field];
+  if (!legacy) return;
+  if (field === 'scoreReaction') {
+    if (!user[legacy] || score < user[legacy]) user[legacy] = score;
+  } else if (field === 'scoreTicTacToe') {
+    user[legacy] = score;
+  } else if (score > (user[legacy] || 0)) {
+    user[legacy] = score;
   }
 };
 
-// POST /api/games/quiz/score
-exports.saveQuizScore = async (req, res) => {
+// POST /api/games/score
+exports.saveGameScore = async (req, res) => {
   try {
-    const { score } = req.body;
-    if (typeof score !== 'number' || score < 0 || score > 10) {
-      return res.status(400).json({ error: 'Invalid score' });
-    }
+    const { game, score } = req.body;
+    const field = getScoreField(game);
+    if (!field) return res.status(400).json({ error: 'Invalid game' });
+
     const user = await User.findById(req.userId);
-    if (score > user.quizHighScore) user.quizHighScore = score;
-    await user.save();
-    res.json({ highScore: user.quizHighScore });
+    if (!user.gameScores) user.gameScores = {};
+
+    const current = user.gameScores[field] ?? (field === 'scoreReaction' ? 9999 : 0);
+    const isHigher = game === 'reaction' || field === 'scoreReaction'
+      ? score < current || current === 0 || current === 9999
+      : score > current;
+
+    if (isHigher) {
+      if (!user.gameScores) user.gameScores = {};
+      user.set(`gameScores.${field}`, score);
+      syncLegacyScore(user, field, score);
+      await user.save();
+      return res.json({ newHighScore: true, score });
+    }
+    res.json({ newHighScore: false, bestScore: current });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save score' });
   }
+};
+
+const saveMaxScore = async (userId, legacyField, gameField, score, lowerIsBetter = false) => {
+  const user = await User.findById(userId);
+  if (!user.gameScores) user.gameScores = {};
+  const current = user.gameScores[gameField] ?? (lowerIsBetter ? 9999 : 0);
+  const isBetter = lowerIsBetter
+    ? score < current || current === 0 || current === 9999
+    : score > current;
+
+  if (isBetter) {
+    user.gameScores[gameField] = score;
+    syncLegacyScore(user, gameField, score);
+    await user.save();
+  }
+  return user.gameScores[gameField];
 };
 
 // POST /api/games/reaction
@@ -78,10 +95,7 @@ exports.saveReactionScore = async (req, res) => {
     const bestMs = Math.min(...times);
 
     const user = await User.findById(req.userId);
-    if (!user.reactionBestAvg || avgMs < user.reactionBestAvg) {
-      user.reactionBestAvg = avgMs;
-    }
-    await user.save();
+    await saveMaxScore(req.userId, 'reactionBestAvg', 'scoreReaction', avgMs, true);
 
     await ReactionScore.findOneAndUpdate(
       { user: req.userId },
@@ -96,201 +110,96 @@ exports.saveReactionScore = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    res.json({ avgMs, bestMs, personalBest: user.reactionBestAvg });
+    const updated = await User.findById(req.userId);
+    res.json({ avgMs, bestMs, personalBest: updated.reactionBestAvg });
   } catch (err) {
-    console.error('Reaction score error:', err);
     res.status(500).json({ error: 'Failed to save reaction score' });
   }
 };
 
-// GET /api/games/reaction/leaderboard
 exports.getReactionLeaderboard = async (req, res) => {
   try {
-    const leaderboard = await ReactionScore.find()
-      .sort({ avgMs: 1 })
-      .limit(10)
-      .lean();
+    const leaderboard = await ReactionScore.find().sort({ avgMs: 1 }).limit(10).lean();
     res.json({ leaderboard });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load leaderboard' });
   }
 };
 
-// POST /api/games/match
-exports.saveMatchTime = async (req, res) => {
-  try {
-    const { seconds } = req.body;
-    if (typeof seconds !== 'number' || seconds < 5 || seconds > 600) {
-      return res.status(400).json({ error: 'Invalid time' });
-    }
-    const user = await User.findById(req.userId);
-    if (!user.memeMatchBestTime || seconds < user.memeMatchBestTime) {
-      user.memeMatchBestTime = seconds;
-    }
-    await user.save();
-    res.json({ bestTime: user.memeMatchBestTime });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to save match time' });
-  }
-};
-
-const saveMaxScore = async (userId, field, score) => {
-  const user = await User.findById(userId);
-  if (score > (user[field] || 0)) user[field] = score;
-  await user.save();
-  return user[field];
-};
-
-// POST /api/games/snake/score
-exports.saveSnakeScore = async (req, res) => {
-  try {
-    const { score } = req.body;
-    if (typeof score !== 'number' || score < 0) return res.status(400).json({ error: 'Invalid score' });
-    const highScore = await saveMaxScore(req.userId, 'snakeHighScore', score);
-    res.json({ highScore });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to save score' });
-  }
-};
-
-// POST /api/games/2048/score
 exports.save2048Score = async (req, res) => {
   try {
     const { score } = req.body;
     if (typeof score !== 'number' || score < 0) return res.status(400).json({ error: 'Invalid score' });
-    const highScore = await saveMaxScore(req.userId, 'game2048HighScore', score);
+    const highScore = await saveMaxScore(req.userId, 'game2048HighScore', 'score2048', score);
     res.json({ highScore });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save score' });
   }
 };
 
-// POST /api/games/simon/score
-exports.saveSimonScore = async (req, res) => {
-  try {
-    const { score } = req.body;
-    if (typeof score !== 'number' || score < 0) return res.status(400).json({ error: 'Invalid score' });
-    const highScore = await saveMaxScore(req.userId, 'simonHighScore', score);
-    res.json({ highScore });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to save score' });
-  }
-};
-
-// POST /api/games/whack/score
-exports.saveWhackScore = async (req, res) => {
-  try {
-    const { score } = req.body;
-    if (typeof score !== 'number' || score < 0) return res.status(400).json({ error: 'Invalid score' });
-    const highScore = await saveMaxScore(req.userId, 'whackHighScore', score);
-    res.json({ highScore });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to save score' });
-  }
-};
-
-// POST /api/games/typer/score
-exports.saveTyperScore = async (req, res) => {
-  try {
-    const { wpm } = req.body;
-    if (typeof wpm !== 'number' || wpm < 0 || wpm > 500) {
-      return res.status(400).json({ error: 'Invalid WPM' });
-    }
-    const user = await User.findById(req.userId);
-    if (wpm > (user.typerBestWpm || 0)) user.typerBestWpm = wpm;
-    await user.save();
-
-    const existing = await TyperScore.findOne({ user: req.userId });
-    if (!existing || wpm > existing.wpm) {
-      await TyperScore.findOneAndUpdate(
-        { user: req.userId },
-        {
-          user: req.userId,
-          displayName: user.displayName || user.username,
-          username: user.username,
-          avatarColor: user.avatarColor,
-          wpm,
-        },
-        { upsert: true, new: true }
-      );
-    }
-
-    res.json({ bestWpm: user.typerBestWpm });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to save score' });
-  }
-};
-
-// GET /api/games/typer/leaderboard
-exports.getTyperLeaderboard = async (req, res) => {
-  try {
-    const leaderboard = await TyperScore.find().sort({ wpm: -1 }).limit(10).lean();
-    res.json({ leaderboard });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to load leaderboard' });
-  }
-};
-
-// POST /api/games/wordle/score
-exports.saveWordleScore = async (req, res) => {
-  try {
-    const { score } = req.body;
-    if (typeof score !== 'number' || score < 0 || score > 6) {
-      return res.status(400).json({ error: 'Invalid score' });
-    }
-    const highScore = await saveMaxScore(req.userId, 'wordleHighScore', score);
-    res.json({ highScore });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to save score' });
-  }
-};
-
-// POST /api/games/flappy/score
-exports.saveFlappyScore = async (req, res) => {
-  try {
-    const { score } = req.body;
-    if (typeof score !== 'number' || score < 0) return res.status(400).json({ error: 'Invalid score' });
-    const highScore = await saveMaxScore(req.userId, 'flappyHighScore', score);
-    res.json({ highScore });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to save score' });
-  }
-};
-
-// POST /api/games/desi-quiz/score
 exports.saveDesiQuizScore = async (req, res) => {
   try {
     const { score } = req.body;
     if (typeof score !== 'number' || score < 0 || score > 10) {
       return res.status(400).json({ error: 'Invalid score' });
     }
-    const highScore = await saveMaxScore(req.userId, 'desiQuizHighScore', score);
+    const highScore = await saveMaxScore(req.userId, 'desiQuizHighScore', 'scoreDesiQuiz', score);
     res.json({ highScore });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save score' });
   }
 };
 
-// GET /api/games/stats
+exports.saveCarRacerScore = async (req, res) => {
+  try {
+    const { score } = req.body;
+    if (typeof score !== 'number' || score < 0) return res.status(400).json({ error: 'Invalid score' });
+    const highScore = await saveMaxScore(req.userId, 'carRacerHighScore', 'scoreCarRacer', score);
+    res.json({ highScore });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save score' });
+  }
+};
+
+exports.saveSpaceShooterScore = async (req, res) => {
+  try {
+    const { score } = req.body;
+    if (typeof score !== 'number' || score < 0) return res.status(400).json({ error: 'Invalid score' });
+    const highScore = await saveMaxScore(req.userId, 'spaceShooterHighScore', 'scoreSpaceShooter', score);
+    res.json({ highScore });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save score' });
+  }
+};
+
+exports.saveTttWin = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    const wins = (user.gameScores?.scoreTicTacToe || user.tttWins || 0) + 1;
+    if (!user.gameScores) user.gameScores = {};
+    user.gameScores.scoreTicTacToe = wins;
+    user.tttWins = wins;
+    await user.save();
+    res.json({ tttWins: wins });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save' });
+  }
+};
+
 exports.getGameStats = async (req, res) => {
   try {
     const user = await User.findById(req.userId).select(
-      'quizHighScore reactionBestAvg memeMatchBestTime snakeHighScore game2048HighScore simonHighScore whackHighScore typerBestWpm wordleHighScore flappyHighScore desiQuizHighScore tttWins displayName username'
+      'game2048HighScore reactionBestAvg desiQuizHighScore tttWins carRacerHighScore spaceShooterHighScore gameScores'
     );
+    const gs = user.gameScores || {};
     res.json({
       stats: {
-        quizHighScore: user.quizHighScore,
-        reactionBestAvg: user.reactionBestAvg,
-        memeMatchBestTime: user.memeMatchBestTime,
-        snakeHighScore: user.snakeHighScore,
-        game2048HighScore: user.game2048HighScore,
-        simonHighScore: user.simonHighScore,
-        whackHighScore: user.whackHighScore,
-        typerBestWpm: user.typerBestWpm,
-        wordleHighScore: user.wordleHighScore,
-        flappyHighScore: user.flappyHighScore,
-        desiQuizHighScore: user.desiQuizHighScore,
-        tttWins: user.tttWins,
+        game2048HighScore: gs.score2048 || user.game2048HighScore || 0,
+        reactionBestAvg: gs.scoreReaction !== 9999 ? gs.scoreReaction : user.reactionBestAvg,
+        desiQuizHighScore: gs.scoreDesiQuiz || user.desiQuizHighScore || 0,
+        tttWins: gs.scoreTicTacToe || user.tttWins || 0,
+        carRacerHighScore: gs.scoreCarRacer || user.carRacerHighScore || 0,
+        spaceShooterHighScore: gs.scoreSpaceShooter || user.spaceShooterHighScore || 0,
       },
     });
   } catch (err) {
@@ -298,28 +207,49 @@ exports.getGameStats = async (req, res) => {
   }
 };
 
-// GET /api/games/match/memes — 8 trending memes (16 cards = 8 pairs)
-exports.getMatchMemes = async (req, res) => {
+exports.getLeaderboard = async (req, res) => {
   try {
-    let memes = await Meme.find({ trending: true })
-      .sort({ usageCount: -1 })
-      .limit(8)
+    const { game } = req.query;
+    const field = getScoreField(game);
+    if (!field) return res.status(400).json({ error: 'Unknown game key' });
+
+    const isReaction = field === 'scoreReaction';
+    const sortDir = isReaction ? 1 : -1;
+    const filterQuery = { [`gameScores.${field}`]: isReaction ? { $gt: 0, $lt: 10000 } : { $gt: 0 } };
+
+    const top10 = await User.find(filterQuery)
+      .sort({ [`gameScores.${field}`]: sortDir })
+      .limit(10)
+      .select('displayName username avatarColor gameScores createdAt')
       .lean();
 
-    if (memes.length < 8) {
-      const extra = await Meme.aggregate([
-        { $match: { _id: { $nin: memes.map((m) => m._id) } } },
-        { $sample: { size: 8 - memes.length } },
-      ]);
-      memes = [...memes, ...extra];
+    let myRank = null;
+    let myScore = null;
+    if (req.userId) {
+      const me = await User.findById(req.userId).select('gameScores').lean();
+      const score = me?.gameScores?.[field];
+      if (score && (!isReaction || score < 10000)) {
+        myScore = score;
+        const betterCount = await User.countDocuments(
+          isReaction
+            ? { [`gameScores.${field}`]: { $gt: 0, $lt: myScore } }
+            : { [`gameScores.${field}`]: { $gt: myScore } }
+        );
+        myRank = betterCount + 1;
+      }
     }
 
-    if (memes.length < 4) {
-      return res.status(400).json({ error: 'Not enough memes' });
-    }
+    const leaderboard = top10.map((u, i) => ({
+      rank: i + 1,
+      displayName: u.displayName || u.username,
+      username: u.username,
+      avatarColor: u.avatarColor || '#00F5FF',
+      score: u.gameScores?.[field] || 0,
+      createdAt: u.createdAt,
+    }));
 
-    res.json({ memes: memes.slice(0, 8) });
+    res.json({ leaderboard, myRank, myScore });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to load memes' });
+    res.status(500).json({ error: 'Failed to fetch leaderboard' });
   }
 };

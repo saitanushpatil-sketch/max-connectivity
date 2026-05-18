@@ -89,6 +89,16 @@ const userSchema = new mongoose.Schema({
   flappyHighScore: { type: Number, default: 0 },
   desiQuizHighScore: { type: Number, default: 0 },
   tttWins: { type: Number, default: 0 },
+  carRacerHighScore: { type: Number, default: 0 },
+  spaceShooterHighScore: { type: Number, default: 0 },
+  gameScores: {
+    score2048: { type: Number, default: 0 },
+    scoreReaction: { type: Number, default: 9999 },
+    scoreDesiQuiz: { type: Number, default: 0 },
+    scoreTicTacToe: { type: Number, default: 0 },
+    scoreCarRacer: { type: Number, default: 0 },
+    scoreSpaceShooter: { type: Number, default: 0 },
+  },
   // Friend list (stored as references for fast lookup)
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   // Web Push subscription (endpoint + keys)
@@ -160,12 +170,14 @@ userSchema.methods.toPublicJSON = function () {
     streakCount: this.streakCount,
     totalMemesSent: this.totalMemesSent,
     badges: this.badges,
-    battlesWon: this.battlesWon,
-    battlesLost: this.battlesLost,
-    battleWinStreak: this.battleWinStreak,
     quizHighScore: this.quizHighScore,
     reactionBestAvg: this.reactionBestAvg,
     memeMatchBestTime: this.memeMatchBestTime,
+    game2048HighScore: this.game2048HighScore,
+    desiQuizHighScore: this.desiQuizHighScore,
+    tttWins: this.tttWins,
+    carRacerHighScore: this.carRacerHighScore,
+    spaceShooterHighScore: this.spaceShooterHighScore,
     createdAt: this.createdAt,
   };
 };

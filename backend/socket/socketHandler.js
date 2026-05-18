@@ -35,28 +35,37 @@ exports.initSocket = (io) => {
     try {
       const token = socket.handshake.auth?.token || socket.handshake.query?.token;
       if (!token) return next(new Error('Authentication error'));
+      
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      if (!decoded || !decoded.userId) return next(new Error('Invalid token'));
+      
       const user = await User.findById(decoded.userId).select('-password');
       if (!user) return next(new Error('User not found'));
+      
       socket.userId = user._id.toString();
       socket.user = user;
       next();
     } catch (err) {
+      if (err.name === 'TokenExpiredError') {
+        return next(new Error('Token expired'));
+      }
+      if (err.name === 'JsonWebTokenError') {
+        return next(new Error('Invalid token'));
+      }
       next(new Error('Authentication error'));
     }
   });
 
   io.on('connection', async (socket) => {
     const userId = socket.userId;
-    console.log(`🔌 Socket connected: ${userId} (${socket.id})`);
 
     addUser(userId, socket.id);
 
     // Update status to online
-    await User.findByIdAndUpdate(userId, { status: 'online', lastSeen: new Date() });
+    await User.findByIdAndUpdate(userId, { status: 'online', lastSeen: new Date() }).catch(() => {});
 
     // Notify friends that user is online
-    const user = await User.findById(userId).select('friends');
+    const user = await User.findById(userId).select('friends').catch(() => {});
     if (user?.friends) {
       user.friends.forEach(friendId => {
         const friendSockets = getUserSockets(friendId.toString());
@@ -84,7 +93,7 @@ exports.initSocket = (io) => {
           sender: userId,
           type: type || 'text',
           content,
-          memeData: type === 'meme' ? memeData : undefined,
+          memeData: (type === 'meme' || type === 'gif') ? memeData : undefined,
           replyTo: replyTo || null,
           readBy: [userId],
         });
@@ -115,12 +124,11 @@ exports.initSocket = (io) => {
             conversationId,
             messageType: type || 'text',
             memeName: memeData?.name,
-          }).catch((err) => console.error('Push dispatch error:', err));
+          }).catch(() => {});
         }
 
         callback?.({ success: true, message: populated });
       } catch (err) {
-        console.error('Socket send_message error:', err);
         callback?.({ error: 'Failed to send message' });
       }
     });
@@ -145,6 +153,15 @@ exports.initSocket = (io) => {
       });
     });
 
+    // Clear typing indicator on disconnect
+    socket.on('disconnect', () => {
+      const userSockets = getUserSockets(userId);
+      if (userSockets.length === 0) {
+        // User is completely offline, notify all friends to clear typing
+        // This is handled by the main disconnect handler above
+      }
+    });
+
     // React to message
     socket.on('react_message', async ({ messageId, emoji, conversationId }) => {
       try {
@@ -167,7 +184,6 @@ exports.initSocket = (io) => {
         await msg.save();
         io.to(conversationId).emit('message_reacted', { messageId, reactions: msg.reactions });
       } catch (err) {
-        console.error('React error:', err);
       }
     });
 
@@ -215,20 +231,18 @@ exports.initSocket = (io) => {
           io.to(sid).emit('messages_read', { conversationId, readBy: userId });
         });
       } catch (err) {
-        console.error('Mark read error:', err);
       }
     });
 
     // Disconnect
     socket.on('disconnect', async () => {
-      console.log(`🔌 Socket disconnected: ${userId} (${socket.id})`);
       removeUser(userId, socket.id);
 
       if (!isOnline(userId)) {
         const lastSeen = new Date();
-        await User.findByIdAndUpdate(userId, { status: 'offline', lastSeen });
+        await User.findByIdAndUpdate(userId, { status: 'offline', lastSeen }).catch(() => {});
 
-        const user = await User.findById(userId).select('friends');
+        const user = await User.findById(userId).select('friends').catch(() => {});
         if (user?.friends) {
           user.friends.forEach(friendId => {
             const friendSockets = getUserSockets(friendId.toString());
@@ -239,5 +253,64 @@ exports.initSocket = (io) => {
         }
       }
     });
+
+    // --- WebRTC Signaling Events ---
+
+    socket.on('call:initiate', async ({ to, offer, callType }) => {
+      const targetSockets = getUserSockets(to);
+      if (targetSockets.length > 0) {
+        targetSockets.forEach((sid) => {
+          io.to(sid).emit('call:incoming', {
+            from: userId,
+            fromUser: {
+              _id: userId,
+              username: socket.user.username,
+              displayName: socket.user.displayName,
+              avatarColor: socket.user.avatarColor,
+            },
+            offer,
+            callType,
+          });
+        });
+      } else {
+        const { sendCallPush } = require('../utils/pushService');
+        await sendCallPush({
+          receiverId: to,
+          callerDisplayName: socket.user.displayName || socket.user.username,
+          callerId: userId,
+        });
+      }
+    });
+
+    socket.on('call:answer', ({ to, answer }) => {
+      getUserSockets(to).forEach((sid) => {
+        io.to(sid).emit('call:answered', { from: userId, answer });
+      });
+    });
+
+    socket.on('call:ice', ({ to, candidate }) => {
+      getUserSockets(to).forEach((sid) => {
+        io.to(sid).emit('call:ice', { from: userId, candidate });
+      });
+    });
+
+    socket.on('call:reject', ({ to }) => {
+      getUserSockets(to).forEach((sid) => {
+        io.to(sid).emit('call:rejected', { from: userId });
+      });
+    });
+
+    socket.on('call:end', ({ to }) => {
+      getUserSockets(to).forEach((sid) => {
+        io.to(sid).emit('call:ended', { from: userId });
+      });
+    });
+
+    socket.on('call:busy', ({ to }) => {
+      getUserSockets(to).forEach((sid) => {
+        io.to(sid).emit('call:busy', { from: userId });
+      });
+    });
+
   });
 };

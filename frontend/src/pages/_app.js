@@ -46,7 +46,7 @@ export default function App({ Component, pageProps }) {
     if (!isAuthenticated && !isPublic && !hasToken) {
       router.replace('/login');
     }
-  }, [isAuthenticated, isLoading, router, showSplash]);
+  }, [isAuthenticated, isLoading, router.pathname, showSplash, router]);
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -63,7 +63,7 @@ export default function App({ Component, pageProps }) {
       router.events.off('routeChangeComplete', onRouteComplete);
       router.events.off('routeChangeError', onRouteError);
     };
-  }, [router.events]);
+  }, [router.events, router]);
 
   const handleSplashComplete = () => {
     try {

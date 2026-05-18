@@ -1,6 +1,5 @@
 const Message = require('../models/Message');
 const User = require('../models/User');
-const Meme = require('../models/Meme');
 
 const buildConvId = (a, b) => [a, b].sort().join('_');
 
@@ -37,7 +36,6 @@ exports.getMessages = async (req, res) => {
       pagination: { page, limit, total, hasMore: total > skip + messages.length },
     });
   } catch (error) {
-    console.error('Get messages error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -61,17 +59,14 @@ exports.sendMessage = async (req, res) => {
       sender: req.userId,
       type: type || 'text',
       content,
-      memeData: type === 'meme' ? memeData : undefined,
+      memeData: (type === 'meme' || type === 'gif') ? memeData : undefined,
       replyTo: replyTo || null,
       readBy: [req.userId],
     });
 
-    // Increment meme usage and user stats
-    if (type === 'meme' && memeData?.memeId) {
-      await Meme.findByIdAndUpdate(memeData.memeId, { $inc: { usageCount: 1 } });
+    if (type === 'gif' || type === 'meme') {
       me.totalMemesSent += 1;
       me.checkBadges();
-      await me.save();
     }
 
     // Update streak on message send
@@ -85,7 +80,6 @@ exports.sendMessage = async (req, res) => {
 
     res.status(201).json({ message: populated });
   } catch (error) {
-    console.error('Send message error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -151,11 +145,15 @@ exports.deleteMessage = async (req, res) => {
 exports.markRead = async (req, res) => {
   try {
     const { convId } = req.params;
-    await Message.updateMany(
-      { conversationId: convId, sender: { $ne: req.userId }, readBy: { $ne: req.userId } },
+    const { senderId } = req.body;
+    if (!senderId) return res.status(400).json({ error: 'senderId required' });
+
+    const result = await Message.updateMany(
+      { conversationId: convId, sender: senderId, readBy: { $ne: req.userId } },
       { $addToSet: { readBy: req.userId } }
     );
-    res.json({ success: true });
+
+    res.json({ modifiedCount: result.modifiedCount });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }

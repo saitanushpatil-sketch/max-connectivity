@@ -33,7 +33,6 @@ exports.sendRequest = async (req, res) => {
     res.status(201).json({ request });
   } catch (error) {
     if (error.code === 11000) return res.status(400).json({ error: 'Request already sent' });
-    console.error('Send request error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -73,7 +72,6 @@ exports.respondToRequest = async (req, res) => {
 
     res.json({ request, message: `Friend request ${action}ed` });
   } catch (error) {
-    console.error('Respond error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 };

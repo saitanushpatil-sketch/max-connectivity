@@ -11,7 +11,6 @@ const configureWebPush = () => {
   const email = process.env.VAPID_EMAIL || 'mailto:admin@max-connectivity.app';
 
   if (!publicKey || !privateKey) {
-    console.warn('⚠ Web Push: VAPID keys not configured — push notifications disabled');
     return false;
   }
 
@@ -43,16 +42,10 @@ const sendPushToUser = async (userId, payload) => {
   } catch (err) {
     if (err.statusCode === 410 || err.statusCode === 404) {
       await User.findByIdAndUpdate(userId, { $unset: { pushSubscription: 1 } });
-      console.log(`🔕 Removed expired push subscription for user ${userId}`);
-    } else {
-      console.error('Push notification error:', err.message || err);
     }
   }
 };
 
-/**
- * Notify offline user of a new message.
- */
 const sendMessagePush = async ({
   receiverId,
   senderDisplayName,
@@ -64,16 +57,40 @@ const sendMessagePush = async ({
   const body =
     messageType === 'meme'
       ? `🎭 ${truncate(memeName || 'Meme', 48)}`
-      : truncate(content, 50);
+      : truncate(content, 80);
 
   await sendPushToUser(receiverId, {
     title: senderDisplayName || 'New message',
     body,
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    type: 'message',
+    imageUrl: null,
+    vibrate: [100, 50, 100],
     data: {
       conversationId,
       url: `/chat/${conversationId}`,
+      type: 'message'
+    },
+  });
+};
+
+/**
+ * Notify offline user of an incoming call.
+ */
+const sendCallPush = async ({
+  receiverId,
+  callerDisplayName,
+  callerId,
+}) => {
+  await sendPushToUser(receiverId, {
+    title: `📹 Incoming Call`,
+    body: `${callerDisplayName || 'Someone'} is calling you`,
+    type: 'call',
+    requireInteraction: true,
+    vibrate: [100, 50, 100, 50, 100],
+    data: {
+      conversationId: callerId,
+      url: `/call/${callerId}`,
+      type: 'call'
     },
   });
 };
@@ -82,4 +99,5 @@ module.exports = {
   configureWebPush,
   sendPushToUser,
   sendMessagePush,
+  sendCallPush,
 };

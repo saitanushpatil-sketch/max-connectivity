@@ -18,7 +18,7 @@ const messageSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['text', 'meme'],
+    enum: ['text', 'meme', 'gif'],
     default: 'text',
   },
   content: {
@@ -26,11 +26,14 @@ const messageSchema = new mongoose.Schema({
     required: true,
     maxlength: 500000,
   },
-  // For meme messages
   memeData: {
+    id: String,
     memeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Meme' },
     name: String,
+    title: String,
     url: String,
+    preview: String,
+    mp4: String,
   },
   // Reply to another message
   replyTo: {

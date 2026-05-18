@@ -28,7 +28,7 @@ export default function usePushNotifications() {
       'Notification' in window &&
       !!VAPID_PUBLIC_KEY;
     setIsSupported(supported);
-    if (supported) setPermission(Notification.permission);
+    if (supported && typeof Notification !== 'undefined') setPermission(Notification.permission);
   }, []);
 
   const getRegistration = async () => {
@@ -51,7 +51,7 @@ export default function usePushNotifications() {
   }, [isSupported]);
 
   const subscribe = useCallback(async () => {
-    if (!isSupported) return false;
+    if (typeof window === 'undefined' || !isSupported) return false;
     try {
       const permissionResult = await Notification.requestPermission();
       setPermission(permissionResult);

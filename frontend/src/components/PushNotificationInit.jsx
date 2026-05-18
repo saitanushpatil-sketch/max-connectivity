@@ -4,13 +4,12 @@ import usePushNotifications from '../hooks/usePushNotifications';
 
 export default function PushNotificationInit() {
   const { isAuthenticated } = useAuthStore();
-  const { tryAutoSubscribe, checkSubscribed } = usePushNotifications();
+  const { checkSubscribed } = usePushNotifications();
 
   useEffect(() => {
     if (!isAuthenticated) return;
     checkSubscribed();
-    tryAutoSubscribe();
-  }, [isAuthenticated, checkSubscribed, tryAutoSubscribe]);
+  }, [isAuthenticated, checkSubscribed]);
 
   return null;
 }

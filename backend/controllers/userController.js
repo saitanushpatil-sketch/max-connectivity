@@ -20,7 +20,6 @@ exports.searchUsers = async (req, res) => {
 
     res.json({ users: users.map(u => u.toPublicJSON()) });
   } catch (error) {
-    console.error('Search error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 };

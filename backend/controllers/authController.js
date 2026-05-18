@@ -39,9 +39,6 @@ const saveAndSendOTP = async (email) => {
   await OTP.create({ email: normalized, code, expiresAt, used: false });
 
   const result = await sendOTP(normalized, code);
-  if (result.dev && process.env.NODE_ENV !== 'production') {
-    console.log(`[dev OTP] ${normalized}: ${code}`);
-  }
   return normalized;
 };
 
@@ -104,7 +101,6 @@ exports.sendSignupOTP = async (req, res) => {
     await saveAndSendOTP(email);
     res.json({ message: 'OTP sent' });
   } catch (error) {
-    console.error('Send signup OTP error:', error);
     res.status(500).json({ error: 'Failed to send verification code' });
   }
 };
@@ -123,7 +119,6 @@ exports.verifySignupOTP = async (req, res) => {
     const verifiedEmailToken = generateVerifiedEmailToken(result.email);
     res.json({ verified: true, email: result.email, verifiedEmailToken });
   } catch (error) {
-    console.error('Verify signup OTP error:', error);
     res.status(500).json({ error: 'Verification failed' });
   }
 };
@@ -176,7 +171,6 @@ exports.signup = async (req, res) => {
       const msg = Object.values(error.errors)[0].message;
       return res.status(400).json({ error: msg });
     }
-    console.error('Signup error:', error);
     res.status(500).json({ error: 'Server error during signup' });
   }
 };
@@ -197,7 +191,6 @@ exports.sendLoginOTP = async (req, res) => {
     await saveAndSendOTP(email);
     res.json({ message: 'OTP sent' });
   } catch (error) {
-    console.error('Send login OTP error:', error);
     res.status(500).json({ error: 'Failed to send access code' });
   }
 };
@@ -219,7 +212,6 @@ exports.loginVerify = async (req, res) => {
     const session = await finishLogin(user);
     res.json(session);
   } catch (error) {
-    console.error('Login verify error:', error);
     res.status(500).json({ error: 'Server error during login' });
   }
 };
@@ -266,7 +258,6 @@ exports.googleAuth = async (req, res) => {
       const msg = Object.values(error.errors)[0].message;
       return res.status(400).json({ error: msg });
     }
-    console.error('Google auth error:', error);
     res.status(500).json({ error: 'Server error during Google authentication' });
   }
 };
@@ -303,7 +294,6 @@ exports.updateProfile = async (req, res) => {
     const user = await User.findByIdAndUpdate(req.userId, updates, { new: true, runValidators: true });
     res.json({ user: user.toPublicJSON() });
   } catch (error) {
-    console.error('Update profile error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 };

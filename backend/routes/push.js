@@ -25,7 +25,6 @@ router.post('/subscribe', auth, async (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
-    console.error('Push subscribe error:', err);
     res.status(500).json({ error: 'Failed to save push subscription' });
   }
 });
@@ -36,7 +35,6 @@ router.post('/unsubscribe', auth, async (req, res) => {
     await User.findByIdAndUpdate(req.userId, { $unset: { pushSubscription: 1 } });
     res.json({ success: true });
   } catch (err) {
-    console.error('Push unsubscribe error:', err);
     res.status(500).json({ error: 'Failed to remove push subscription' });
   }
 });

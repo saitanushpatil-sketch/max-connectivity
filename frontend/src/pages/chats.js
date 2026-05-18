@@ -10,6 +10,7 @@ import api from '../utils/api';
 import { SkeletonRow } from '../components/ui/Skeleton';
 import useNotificationStore from '../context/notificationStore';
 import NotificationCenter from '../components/ui/NotificationCenter';
+import hapticTap from '../utils/haptic';
 
 const buildConvId = (a, b) => [a, b].sort().join('_');
 const timeAgo = (date) => {
@@ -95,6 +96,10 @@ export default function Chats() {
     });
   }, [sortedFriends, lastMessages, unreadCounts, user?._id]);
 
+  const handleNavigate = useCallback((url) => {
+    router.push(url);
+  }, [router]);
+
   return (
     <div className="flex flex-col h-full pb-16">
       {/* Header */}
@@ -131,7 +136,7 @@ export default function Chats() {
       {showNotificationCenter && (
         <NotificationCenter
           onClose={() => setShowNotificationCenter(false)}
-          onNavigate={(url) => router.push(url)}
+          onNavigate={handleNavigate}
         />
       )}
 
