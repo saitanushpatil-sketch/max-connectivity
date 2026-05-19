@@ -11,7 +11,7 @@ import '../styles/globals.css';
 const PUBLIC_ROUTES = [
   '/login', '/signup', '/offline',
   '/auth/google-sync', '/api/auth/callback/google',
-  '/call/',
+  '/call',
 ];
 
 function AppInner({ Component, pageProps }) {
@@ -84,7 +84,7 @@ function AppInner({ Component, pageProps }) {
       {/* Incoming call modal - global */}
       {incomingCall && (
         <IncomingCallModal
-          caller={incomingCall.caller}
+          caller={incomingCall.fromUser || incomingCall.caller}
           callType={incomingCall.callType}
           onAccept={handleAcceptCall}
           onReject={handleRejectCall}
