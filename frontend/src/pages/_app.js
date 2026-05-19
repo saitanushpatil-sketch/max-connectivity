@@ -1,7 +1,10 @@
 import { SessionProvider } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import useAuthStore from '../context/authStore';
+import useCallStore from '../context/callStore';
+import useSocket from '../hooks/useSocket';
+import IncomingCallModal from '../components/call/IncomingCallModal';
 import '../styles/globals.css';
 
 const PUBLIC_ROUTES = [
@@ -9,27 +12,99 @@ const PUBLIC_ROUTES = [
   '/auth/google-sync', '/api/auth/callback/google'
 ];
 
-export default function App({ Component, pageProps: { session, ...pageProps } }) {
+function AppInner({ Component, pageProps }) {
   const router = useRouter();
-  const { init, isAuthenticated, isLoading } = useAuthStore();
-  const [appReady, setAppReady] = useState(false);
+  const { isAuthenticated, isLoading } = useAuthStore();
+  const { incomingCall, setIncomingCall, clearIncomingCall } = useCallStore();
+  const [socketConnected, setSocketConnected] = useState(true);
+
+  useSocket({
+    onConnect: () => setSocketConnected(true),
+    onDisconnect: () => setSocketConnected(false),
+    onCallIncoming: (data) => {
+      setIncomingCall(data);
+    },
+  });
 
   useEffect(() => {
-    init().finally(() => setAppReady(true));
-  }, []);
-
-  useEffect(() => {
-    if (!appReady || isLoading) return;
+    if (isLoading) return;
     const isPublic = PUBLIC_ROUTES.some(r => router.pathname.startsWith(r));
     if (!isAuthenticated && !isPublic) {
       router.replace('/login');
     }
-  }, [appReady, isAuthenticated, isLoading, router.pathname]);
+  }, [isAuthenticated, isLoading, router.pathname]);
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
+  }, []);
+
+  const handleAcceptCall = useCallback(() => {
+    if (!incomingCall) return;
+    const { callerId, callType } = incomingCall;
+    clearIncomingCall();
+    router.push(`/call/${callerId}?type=${callType || 'video'}&incoming=1`);
+  }, [incomingCall, clearIncomingCall, router]);
+
+  const handleRejectCall = useCallback(() => {
+    clearIncomingCall();
+  }, [clearIncomingCall]);
+
+  return (
+    <>
+      {/* Reconnection banner */}
+      {!socketConnected && isAuthenticated && (
+        <div style={{
+          position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)',
+          width: '100%', maxWidth: 448, zIndex: 9000,
+          background: 'rgba(255,183,3,0.15)',
+          borderBottom: '1px solid rgba(255,183,3,0.3)',
+          padding: '6px 0',
+          textAlign: 'center',
+          fontFamily: 'Share Tech Mono, monospace',
+          fontSize: 10,
+          letterSpacing: 2,
+          color: '#FFB703',
+        }}>
+          ● RECONNECTING...
+        </div>
+      )}
+
+      {/* Incoming call modal - global */}
+      {incomingCall && (
+        <IncomingCallModal
+          caller={incomingCall.caller}
+          callType={incomingCall.callType}
+          onAccept={handleAcceptCall}
+          onReject={handleRejectCall}
+        />
+      )}
+
+      <div style={{
+        position: 'fixed', inset: 0,
+        display: 'flex', justifyContent: 'center',
+        background: '#0A0A0F'
+      }}>
+        <div style={{
+          position: 'relative', width: '100%',
+          maxWidth: 448, height: '100%',
+          display: 'flex', flexDirection: 'column',
+          overflow: 'hidden'
+        }}>
+          <Component {...pageProps} key={router.pathname} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+export default function App({ Component, pageProps: { session, ...pageProps } }) {
+  const { init, isAuthenticated, isLoading } = useAuthStore();
+  const [appReady, setAppReady] = useState(false);
+
+  useEffect(() => {
+    init().finally(() => setAppReady(true));
   }, []);
 
   if (!appReady || isLoading) {
@@ -71,20 +146,8 @@ export default function App({ Component, pageProps: { session, ...pageProps } })
 
   return (
     <SessionProvider session={session}>
-      <div style={{
-        position: 'fixed', inset: 0,
-        display: 'flex', justifyContent: 'center',
-        background: '#0A0A0F'
-      }}>
-        <div style={{
-          position: 'relative', width: '100%',
-          maxWidth: 448, height: '100%',
-          display: 'flex', flexDirection: 'column',
-          overflow: 'hidden'
-        }}>
-          <Component {...pageProps} />
-        </div>
-      </div>
+      <AppInner Component={Component} pageProps={pageProps} />
     </SessionProvider>
   );
 }
+

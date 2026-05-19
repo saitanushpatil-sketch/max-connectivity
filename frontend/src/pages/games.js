@@ -1,16 +1,31 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
+import dynamic from 'next/dynamic';
 import BottomNav from '../components/ui/BottomNav';
 import ErrorBoundary from '../components/ui/ErrorBoundary';
-import Game2048 from '../components/games/Game2048';
-import TicTacToe from '../components/games/TicTacToe';
-import DesiQuiz from '../components/games/DesiQuiz';
-import ReactionTest from '../components/games/ReactionTest';
-import CarRacer from '../components/games/CarRacer';
-import SpaceShooter from '../components/games/SpaceShooter';
 import Scoreboard from '../components/games/Scoreboard';
 import api from '../utils/api';
 import hapticTap from '../utils/haptic';
+
+const GameLoader = () => (
+  <div className="flex flex-col items-center justify-center h-full text-center p-8 gap-4">
+    <div style={{
+      width: 40, height: 40,
+      border: '2px solid rgba(0,245,255,0.2)',
+      borderTopColor: '#00F5FF',
+      borderRadius: '50%',
+      animation: 'spin 1s linear infinite'
+    }} />
+    <span className="font-mono text-xs tracking-widest text-[#00F5FF]">LOADING MISSION...</span>
+  </div>
+);
+
+const Game2048 = dynamic(() => import('../components/games/Game2048'), { ssr: false, loading: () => <GameLoader /> });
+const TicTacToe = dynamic(() => import('../components/games/TicTacToe'), { ssr: false, loading: () => <GameLoader /> });
+const DesiQuiz = dynamic(() => import('../components/games/DesiQuiz'), { ssr: false, loading: () => <GameLoader /> });
+const ReactionTest = dynamic(() => import('../components/games/ReactionTest'), { ssr: false, loading: () => <GameLoader /> });
+const CarRacer = dynamic(() => import('../components/games/CarRacer'), { ssr: false, loading: () => <GameLoader /> });
+const SpaceShooter = dynamic(() => import('../components/games/SpaceShooter'), { ssr: false, loading: () => <GameLoader /> });
 
 const GAMES = [
   {

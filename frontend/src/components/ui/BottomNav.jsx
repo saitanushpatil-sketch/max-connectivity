@@ -1,6 +1,6 @@
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import api from '../../utils/api';
 import useSocket from '../../hooks/useSocket';
 import hapticTap from '../../utils/haptic';
@@ -8,30 +8,30 @@ import { getGalleryCount } from '../../utils/galleryStorage';
 
 const NAV = [
   { href: '/chats', label: 'COMMS', icon: (active) => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active ? '#00F5FF' : '#6B6B8A'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active ? '#00F5FF' : '#6B6B8A'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'all 0.3s ease', filter: active ? 'drop-shadow(0 0 8px #00F5FF)' : 'none' }}>
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
     </svg>
   )},
   { href: '/friends', label: 'SQUAD', icon: (active) => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active ? '#00F5FF' : '#6B6B8A'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active ? '#00F5FF' : '#6B6B8A'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'all 0.3s ease', filter: active ? 'drop-shadow(0 0 8px #00F5FF)' : 'none' }}>
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
       <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
     </svg>
   )},
   { href: '/memes', label: 'MEMES', icon: (active) => (
-    <span style={{ fontSize: 18, filter: active ? 'drop-shadow(0 0 6px #FF006E)' : 'none' }}>🎭</span>
+    <span style={{ fontSize: 18, transition: 'all 0.3s ease', filter: active ? 'drop-shadow(0 0 8px #FF006E)' : 'none' }}>🎭</span>
   )},
   { href: '/games', label: 'GAMES', icon: (active) => (
-    <span style={{ fontSize: 18, filter: active ? 'drop-shadow(0 0 6px #00F5FF)' : 'none' }}>🎮</span>
+    <span style={{ fontSize: 18, transition: 'all 0.3s ease', filter: active ? 'drop-shadow(0 0 8px #00F5FF)' : 'none' }}>🎮</span>
   )},
   { href: '/profile', label: 'ID', icon: (active) => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active ? '#00F5FF' : '#6B6B8A'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active ? '#00F5FF' : '#6B6B8A'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'all 0.3s ease', filter: active ? 'drop-shadow(0 0 8px #00F5FF)' : 'none' }}>
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
     </svg>
   )},
 ];
 
-export default function BottomNav() {
+const BottomNav = () => {
   const router = useRouter();
   const [unread, setUnread] = useState(0);
   const [pendingRequests, setPendingRequests] = useState(0);
@@ -89,7 +89,7 @@ export default function BottomNav() {
               key={href}
               href={href}
               onClick={() => hapticTap(6)}
-              className={`flex flex-col items-center gap-0.5 min-w-0 flex-1 relative py-1 transition-transform ${active ? 'nav-link-active' : ''}`}
+              className={`flex flex-col items-center gap-0.5 min-w-0 flex-1 relative py-1 transition-transform duration-300 ease-in-out ${active ? 'nav-link-active scale-110' : 'hover:scale-105'}`}
             >
               <div className="relative">
                 {icon(active)}
@@ -119,3 +119,5 @@ export default function BottomNav() {
     </nav>
   );
 }
+
+export default memo(BottomNav);

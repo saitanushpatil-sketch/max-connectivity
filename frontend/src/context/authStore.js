@@ -12,31 +12,34 @@ const useAuthStore = create((set, get) => ({
       set({ isLoading: false });
       return;
     }
-
-    let token = getTokenFromCookie() || localStorage.getItem('max_token');
+    const token = getTokenFromCookie() || localStorage.getItem('max_token');
     if (token) setToken(token);
-
     const cached = localStorage.getItem('max_user');
+    
     if (!token) {
       set({ isLoading: false });
       return;
     }
-
+    
+    // Show cached user INSTANTLY
     if (cached) {
       try {
-        set({ user: JSON.parse(cached), token, isAuthenticated: true, isLoading: true });
-      } catch {
-        set({ token, isLoading: true });
-      }
-    } else {
-      set({ token, isLoading: true });
+        const user = JSON.parse(cached);
+        set({ 
+          user, token, 
+          isAuthenticated: true,
+          isLoading: false  // Don't block!
+        });
+      } catch (_) {}
     }
-
+    
+    // Verify in background silently
     try {
       const { data } = await api.get('/auth/me');
       localStorage.setItem('max_user', JSON.stringify(data.user));
-      set({ user: data.user, token, isAuthenticated: true, isLoading: false });
+      set({ user: data.user, isAuthenticated: true, isLoading: false });
     } catch (err) {
+      // Token invalid - logout
       if (err.response?.status === 401) {
         clearToken();
         set({ user: null, token: null, isAuthenticated: false, isLoading: false });

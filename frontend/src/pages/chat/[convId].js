@@ -408,6 +408,7 @@ export default function ChatPage() {
         ref={messagesContainerRef}
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto px-3 py-2 relative"
+        style={{ overflowY: 'auto', WebkitOverflowScrolling: 'touch', willChange: 'scroll-position' }}
       >
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-2 opacity-50">

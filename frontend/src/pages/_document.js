@@ -10,6 +10,8 @@ export default function Document() {
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="MAX" />
         <link rel="manifest" href="/manifest.json" />
+        <link rel="prefetch" href="/chats" />
+        <link rel="prefetch" href="/chat" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

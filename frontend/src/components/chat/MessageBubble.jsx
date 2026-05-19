@@ -69,6 +69,7 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
         e.preventDefault();
         handleLongPress();
       }}
+      style={{ willChange: 'transform', transform: 'translateZ(0)' }}
     >
       {!isOwn && <Avatar user={message.sender} size={28} />}
 
@@ -119,6 +120,9 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
                   className="rounded-sm"
                   style={{ maxWidth: 220, width: '100%', height: 'auto', display: gifLoaded ? 'block' : 'none' }}
                   onLoad={() => setGifLoaded(true)}
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => { e.target.style.display = 'none'; }}
                 />
               </button>
               {(message.memeData?.title || message.memeData?.name) && (
@@ -134,6 +138,9 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
                 alt={message.memeData?.name || 'Meme'}
                 className="rounded-sm"
                 style={{ maxWidth: 250, width: '100%', height: 'auto' }}
+                loading="lazy"
+                decoding="async"
+                onError={(e) => { e.target.style.display = 'none'; }}
               />
             </button>
           ) : message.type === 'meme' ? (

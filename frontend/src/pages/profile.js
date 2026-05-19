@@ -1,14 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import Avatar from '../components/ui/Avatar';
-import BottomNav from '../components/ui/BottomNav';
 import useAuthStore from '../context/authStore';
-import usePushNotifications from '../hooks/usePushNotifications';
+import BottomNav from '../components/ui/BottomNav';
+import Avatar from '../components/ui/Avatar';
 import api from '../utils/api';
-import Skeleton from '../components/ui/Skeleton';
-import { getGalleryCount } from '../utils/galleryStorage';
 
-const COLORS = ['#00F5FF', '#FF006E', '#06D6A0', '#FFB703', '#8B5CF6', '#F97316', '#EC4899'];
+const COLORS = ['#00F5FF','#FF006E','#06D6A0',
+                '#FFB703','#8B5CF6','#F97316','#EC4899'];
+
 const BADGES = {
   week_streak: { icon: '🔥', label: '7-DAY STREAK', color: '#F97316' },
   month_streak: { icon: '⚡', label: '30-DAY STREAK', color: '#FFB703' },
@@ -16,35 +15,41 @@ const BADGES = {
   early_adopter: { icon: '🚀', label: 'EARLY ADOPTER', color: '#00F5FF' },
   social_butterfly: { icon: '🦋', label: 'SOCIAL BUTTERFLY', color: '#EC4899' },
   meme_warrior: { icon: '⚔️', label: 'MEME WARRIOR', color: '#FF006E' },
-  meme_champion: { icon: '🏆', label: 'MEME CHAMPION', color: '#FFB703' },
-  undefeated: { icon: '👑', label: 'UNDEFEATED', color: '#00F5FF' },
+  meme_champion: { icon: '🏆', label: 'MEME CHAMPION', color: '#FFD700' },
 };
 
-export const getServerSideProps = async () => ({ props: {} });
+const GAME_SCORES = [
+  { key: 'score2048', label: '2048', icon: '🎮' },
+  { key: 'scoreReaction', label: 'REACTION', icon: '⚡' },
+  { key: 'scoreDesiQuiz', label: 'DESI QUIZ', icon: '🎬' },
+  { key: 'scoreCarRacer', label: 'CAR RACER', icon: '🏎️' },
+  { key: 'scoreSpaceShooter', label: 'SPACE', icon: '🚀' },
+  { key: 'scoreTicTacToe', label: 'TIC TAC', icon: '✕○' },
+];
 
 export default function Profile() {
   const router = useRouter();
   const { user, updateUser, logout } = useAuthStore();
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({ displayName: user?.displayName || '', bio: user?.bio || '', avatarColor: user?.avatarColor || '#00F5FF' });
+  const [form, setForm] = useState({
+    displayName: '',
+    bio: '',
+    avatarColor: '#00F5FF'
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [pushLoading, setPushLoading] = useState(false);
-  const [galleryCount, setGalleryCount] = useState(0);
-  const { isSupported, isSubscribed, subscribe, unsubscribe, checkSubscribed } = usePushNotifications();
 
   useEffect(() => {
-    setGalleryCount(getGalleryCount());
-    const onGal = () => setGalleryCount(getGalleryCount());
-    window.addEventListener('max-gallery-updated', onGal);
-    return () => window.removeEventListener('max-gallery-updated', onGal);
-  }, []);
+    if (user) {
+      setForm({
+        displayName: user.displayName || '',
+        bio: user.bio || '',
+        avatarColor: user.avatarColor || '#00F5FF'
+      });
+    }
+  }, [user]);
 
-  useEffect(() => {
-    if (user) checkSubscribed();
-  }, [user, checkSubscribed]);
-
-  const handleSave = useCallback(async () => {
+  const handleSave = async () => {
     setSaving(true);
     setError('');
     try {
@@ -52,100 +57,104 @@ export default function Profile() {
       updateUser(data.user);
       setEditing(false);
     } catch (err) {
-      setError(err.response?.data?.error || 'Save failed');
+      setError(err?.response?.data?.error || 'Save failed');
     } finally {
       setSaving(false);
     }
-  }, [form, updateUser]);
-
-  const handleLogout = () => {
-    logout();
-    router.replace('/login');
   };
 
-  const handlePushToggle = useCallback(async () => {
-    setPushLoading(true);
-    try {
-      if (isSubscribed) {
-        await unsubscribe();
-      } else {
-        await subscribe();
-      }
-    } catch (err) {
-      // Handle error silently or show toast
-    } finally {
-      setPushLoading(false);
-    }
-  }, [isSubscribed, subscribe, unsubscribe]);
+  const handleLogout = useCallback(() => {
+    logout();
+    router.replace('/login');
+  }, [logout, router]);
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div style={{
+        height: '100%', display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+        background: '#0A0A0F'
+      }}>
+        <div style={{ color: '#6B6B8A', fontFamily: 'Share Tech Mono' }}>
+          LOADING OPERATOR DATA...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full pb-16 overflow-y-auto">
       {/* Header */}
-      <div className="px-4 pt-10 pb-3" style={{ borderBottom: '1px solid #252535' }}>
-        <div className="font-mono text-[10px] tracking-widest mb-0.5" style={{ color: '#6B6B8A' }}>SYS://OPERATOR_ID</div>
-        <h1 className="font-heading text-2xl font-bold tracking-wider" style={{ color: '#00F5FF', textShadow: '0 0 15px rgba(0,245,255,0.3)' }}>PROFILE</h1>
+      <div className="px-4 pt-10 pb-3"
+        style={{ borderBottom: '1px solid #252535' }}>
+        <div className="font-mono text-[10px] tracking-widest mb-0.5"
+          style={{ color: '#6B6B8A' }}>SYS://OPERATOR_ID</div>
+        <h1 className="font-heading text-2xl font-bold tracking-wider"
+          style={{ color: '#00F5FF' }}>PROFILE</h1>
       </div>
 
-      <div className="px-4 py-6 flex flex-col gap-4">
-        {/* Avatar + basic info */}
-        <div
-          className="p-5 rounded-sm corner-brackets"
-          style={{ background: '#12121A', border: '1px solid #252535' }}
-        >
+      <div className="px-4 py-4 flex flex-col gap-4">
+        {/* Avatar + Info */}
+        <div className="p-5 rounded-sm"
+          style={{ background: '#12121A', border: '1px solid #252535' }}>
           <div className="flex items-center gap-4 mb-4">
             <Avatar user={user} size={72} showStatus />
             <div className="flex-1 min-w-0">
-              <p className="font-heading text-xl font-bold" style={{ color: '#E8E8FF' }}>{user.displayName || user.username}</p>
-              <p className="font-mono text-xs tracking-widest" style={{ color: '#6B6B8A' }}>@{user.username}</p>
-              {user.bio && <p className="text-xs mt-1" style={{ color: '#B0B0C8' }}>{user.bio}</p>}
+              <p className="font-heading text-xl font-bold"
+                style={{ color: '#E8E8FF' }}>
+                {user.displayName || user.username}
+              </p>
+              <p className="font-mono text-xs tracking-widest"
+                style={{ color: '#6B6B8A' }}>@{user.username}</p>
+              {user.bio && (
+                <p className="text-xs mt-1" style={{ color: '#B0B0C8' }}>
+                  {user.bio}
+                </p>
+              )}
             </div>
           </div>
 
           {/* Stats */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col items-center py-3 rounded-sm" style={{ background: '#0A0A0F', border: '1px solid #252535' }}>
+            <div className="flex flex-col items-center py-3 rounded-sm"
+              style={{ background: '#0A0A0F', border: '1px solid #252535' }}>
               <span style={{ fontSize: 22 }}>🔥</span>
-              <span className="font-heading text-xl font-bold mt-1" style={{ color: '#F97316' }}>{user.streakCount}</span>
-              <span className="font-mono text-[10px] tracking-widest" style={{ color: '#6B6B8A' }}>DAY STREAK</span>
+              <span className="font-heading text-xl font-bold mt-1"
+                style={{ color: '#F97316' }}>
+                {user.streakCount || 0}
+              </span>
+              <span className="font-mono text-[10px] tracking-widest"
+                style={{ color: '#6B6B8A' }}>DAY STREAK</span>
             </div>
-            <div className="flex flex-col items-center py-3 rounded-sm" style={{ background: '#0A0A0F', border: '1px solid #252535' }}>
+            <div className="flex flex-col items-center py-3 rounded-sm"
+              style={{ background: '#0A0A0F', border: '1px solid #252535' }}>
               <span style={{ fontSize: 22 }}>🎭</span>
-              <span className="font-heading text-xl font-bold mt-1" style={{ color: '#8B5CF6' }}>{user.totalMemesSent}</span>
-              <span className="font-mono text-[10px] tracking-widest" style={{ color: '#6B6B8A' }}>MEMES SENT</span>
+              <span className="font-heading text-xl font-bold mt-1"
+                style={{ color: '#8B5CF6' }}>
+                {user.totalMemesSent || 0}
+              </span>
+              <span className="font-mono text-[10px] tracking-widest"
+                style={{ color: '#6B6B8A' }}>GIFS SENT</span>
             </div>
           </div>
         </div>
 
-        <div className="p-4 rounded-sm" style={{ background: '#12121A', border: '1px solid #252535' }}>
-          <div className="font-mono text-[10px] tracking-widest mb-3" style={{ color: '#6B6B8A' }}>// CAMERA</div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="text-center py-3 rounded-sm" style={{ background: '#0A0A0F', border: '1px solid #252535' }}>
-              <span className="font-heading text-xl font-bold" style={{ color: '#00F5FF' }}>{galleryCount}</span>
-              <span className="block font-mono text-[9px] tracking-widest mt-1" style={{ color: '#6B6B8A' }}>GALLERY PHOTOS</span>
-            </div>
-            <div className="text-center py-3 rounded-sm" style={{ background: '#0A0A0F', border: '1px solid #252535' }}>
-              <span className="font-heading text-xl font-bold" style={{ color: '#FFB703' }}>📸</span>
-              <span className="block font-mono text-[9px] tracking-widest mt-1" style={{ color: '#6B6B8A' }}>CAMERA</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-sm" style={{ background: '#12121A', border: '1px solid #252535' }}>
-          <div className="font-mono text-[10px] tracking-widest mb-3" style={{ color: '#6B6B8A' }}>// ARCADE SCORES</div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {[
-              { label: '2048', val: user.game2048HighScore || 0, color: '#FFB703' },
-              { label: 'REACTION', val: user.reactionBestAvg ? `${user.reactionBestAvg}ms` : '—', color: '#06D6A0' },
-              { label: 'DESI QUIZ', val: `${user.desiQuizHighScore || 0}/10`, color: '#00F5FF' },
-              { label: 'TTT WINS', val: user.tttWins || 0, color: '#FF006E' },
-              { label: 'CAR RACER', val: user.carRacerHighScore || 0, color: '#F97316' },
-              { label: 'SPACE', val: user.spaceShooterHighScore || 0, color: '#8B5CF6' },
-            ].map(({ label, val, color }) => (
-              <div key={label} className="text-center py-3 rounded-sm" style={{ background: '#0A0A0F', border: '1px solid #252535' }}>
-                <span className="font-heading text-lg font-bold" style={{ color }}>{val}</span>
-                <span className="block font-mono text-[9px] tracking-widest mt-1" style={{ color: '#6B6B8A' }}>{label}</span>
+        {/* Game Scores */}
+        <div className="p-4 rounded-sm"
+          style={{ background: '#12121A', border: '1px solid #252535' }}>
+          <div className="font-mono text-[10px] tracking-widest mb-3"
+            style={{ color: '#6B6B8A' }}>// GAME SCORES</div>
+          <div className="grid grid-cols-3 gap-2">
+            {GAME_SCORES.map(({ key, label, icon }) => (
+              <div key={key} className="flex flex-col items-center py-2 rounded-sm"
+                style={{ background: '#0A0A0F', border: '1px solid #252535' }}>
+                <span style={{ fontSize: 16 }}>{icon}</span>
+                <span className="font-heading font-bold mt-1"
+                  style={{ color: '#00F5FF', fontSize: 14 }}>
+                  {user?.gameScores?.[key] || 0}
+                </span>
+                <span className="font-mono text-[9px] tracking-widest text-center"
+                  style={{ color: '#6B6B8A' }}>{label}</span>
               </div>
             ))}
           </div>
@@ -153,24 +162,24 @@ export default function Profile() {
 
         {/* Badges */}
         {user.badges?.length > 0 && (
-          <div className="p-4 rounded-sm" style={{ background: '#12121A', border: '1px solid #252535' }}>
-            <div className="font-mono text-[10px] tracking-widest mb-3" style={{ color: '#6B6B8A' }}>// ACHIEVEMENTS</div>
+          <div className="p-4 rounded-sm"
+            style={{ background: '#12121A', border: '1px solid #252535' }}>
+            <div className="font-mono text-[10px] tracking-widest mb-3"
+              style={{ color: '#6B6B8A' }}>// ACHIEVEMENTS</div>
             <div className="flex flex-wrap gap-2">
-              {user.badges.map((badge, i) => {
+              {user.badges.map((badge) => {
                 const b = BADGES[badge];
                 if (!b) return null;
                 return (
-                  <div
-                    key={badge}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm badge-bounce"
+                  <div key={badge}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm"
                     style={{
-                      animationDelay: `${i * 0.08}s`,
                       background: `${b.color}11`,
-                      border: `1px solid ${b.color}44`,
-                    }}
-                  >
+                      border: `1px solid ${b.color}44`
+                    }}>
                     <span style={{ fontSize: 14 }}>{b.icon}</span>
-                    <span className="font-mono text-[10px] tracking-widest" style={{ color: b.color }}>{b.label}</span>
+                    <span className="font-mono text-[10px] tracking-widest"
+                      style={{ color: b.color }}>{b.label}</span>
                   </div>
                 );
               })}
@@ -180,126 +189,100 @@ export default function Profile() {
 
         {/* Edit form */}
         {editing ? (
-          <div className="p-4 rounded-sm" style={{ background: '#12121A', border: '1px solid #252535' }}>
-            <div className="font-mono text-[10px] tracking-widest mb-4" style={{ color: '#6B6B8A' }}>// EDIT PROFILE</div>
-
+          <div className="p-4 rounded-sm"
+            style={{ background: '#12121A', border: '1px solid #252535' }}>
+            <div className="font-mono text-[10px] tracking-widest mb-4"
+              style={{ color: '#6B6B8A' }}>// EDIT PROFILE</div>
             <div className="flex flex-col gap-3">
               <div>
-                <label className="block font-mono text-[10px] tracking-widest mb-1.5" style={{ color: '#6B6B8A' }}>DISPLAY NAME</label>
-                <input className="hud-input w-full px-3 py-2.5 rounded-sm text-sm" value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} maxLength={40} />
+                <label className="block font-mono text-[10px] tracking-widest mb-1.5"
+                  style={{ color: '#6B6B8A' }}>DISPLAY NAME</label>
+                <input
+                  className="hud-input w-full px-3 py-2.5 rounded-sm text-sm"
+                  value={form.displayName}
+                  onChange={e => setForm({...form, displayName: e.target.value})}
+                  maxLength={40}
+                />
               </div>
               <div>
-                <label className="block font-mono text-[10px] tracking-widest mb-1.5" style={{ color: '#6B6B8A' }}>BIO</label>
-                <textarea className="hud-input w-full px-3 py-2.5 rounded-sm text-sm resize-none" rows={3} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} maxLength={160} placeholder="Tell your squad about yourself..." />
+                <label className="block font-mono text-[10px] tracking-widest mb-1.5"
+                  style={{ color: '#6B6B8A' }}>BIO</label>
+                <textarea
+                  className="hud-input w-full px-3 py-2.5 rounded-sm text-sm resize-none"
+                  rows={3}
+                  value={form.bio}
+                  onChange={e => setForm({...form, bio: e.target.value})}
+                  maxLength={160}
+                />
               </div>
               <div>
-                <label className="block font-mono text-[10px] tracking-widest mb-1.5" style={{ color: '#6B6B8A' }}>OPERATOR COLOR</label>
+                <label className="block font-mono text-[10px] tracking-widest mb-1.5"
+                  style={{ color: '#6B6B8A' }}>OPERATOR COLOR</label>
                 <div className="flex gap-2 flex-wrap">
-                  {COLORS.map((c) => (
-                    <button key={c} type="button" onClick={() => setForm({ ...form, avatarColor: c })}
-                      className="w-8 h-8 rounded-sm transition-transform hover:scale-110"
-                      style={{ background: c, border: form.avatarColor === c ? '2px solid white' : '2px solid transparent', boxShadow: form.avatarColor === c ? `0 0 12px ${c}` : 'none' }}
+                  {COLORS.map(c => (
+                    <button key={c} type="button"
+                      onClick={() => setForm({...form, avatarColor: c})}
+                      style={{
+                        width: 32, height: 32, borderRadius: 4,
+                        background: c, cursor: 'pointer',
+                        border: form.avatarColor === c
+                          ? '2px solid white' : '2px solid transparent',
+                        boxShadow: form.avatarColor === c
+                          ? `0 0 12px ${c}` : 'none'
+                      }}
                     />
                   ))}
                 </div>
               </div>
-
-              {error && <div className="font-mono text-xs px-3 py-2 rounded-sm" style={{ background: 'rgba(255,0,110,0.1)', border: '1px solid rgba(255,0,110,0.3)', color: '#FF006E' }}>⚠ {error}</div>}
-
+              {error && (
+                <div className="font-mono text-xs px-3 py-2 rounded-sm"
+                  style={{
+                    background: 'rgba(255,0,110,0.1)',
+                    border: '1px solid rgba(255,0,110,0.3)',
+                    color: '#FF006E'
+                  }}>
+                  ⚠ {error}
+                </div>
+              )}
               <div className="flex gap-2">
-                <button onClick={handleSave} disabled={saving} className="hud-btn hud-btn-primary flex-1 py-2.5 rounded-sm text-xs">
+                <button onClick={handleSave} disabled={saving}
+                  className="hud-btn hud-btn-primary flex-1 py-2.5 rounded-sm text-xs"
+                  style={{ opacity: saving ? 0.7 : 1 }}>
                   {saving ? 'SAVING...' : 'SAVE CHANGES'}
                 </button>
-                <button onClick={() => { setEditing(false); setError(''); }} className="hud-btn hud-btn-ghost flex-1 py-2.5 rounded-sm text-xs">
+                <button
+                  onClick={() => { setEditing(false); setError(''); }}
+                  className="hud-btn hud-btn-ghost flex-1 py-2.5 rounded-sm text-xs">
                   CANCEL
                 </button>
               </div>
             </div>
           </div>
         ) : (
-          <button
-            onClick={() => setEditing(true)}
-            className="hud-btn hud-btn-ghost w-full py-3 rounded-sm text-xs"
-          >
+          <button onClick={() => setEditing(true)}
+            className="hud-btn hud-btn-ghost w-full py-3 rounded-sm text-xs">
             ✏ EDIT OPERATOR PROFILE
           </button>
         )}
 
-        {/* Push notifications */}
-        {isSupported && (
-          <div
-            className="p-4 rounded-sm corner-brackets"
-            style={{ background: '#12121A', border: '1px solid #252535' }}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <div
-                  className="w-10 h-10 flex items-center justify-center rounded-sm flex-shrink-0"
-                  style={{
-                    background: isSubscribed ? 'rgba(6,214,160,0.12)' : 'rgba(107,107,138,0.1)',
-                    border: `1px solid ${isSubscribed ? 'rgba(6,214,160,0.4)' : '#252535'}`,
-                    boxShadow: isSubscribed ? '0 0 12px rgba(6,214,160,0.25)' : 'none',
-                  }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: isSubscribed ? '#06D6A0' : '#6B6B8A' }}>
-                    <path d="M12 2C8.5 2 6 4.5 6 8V12L4 14V15H20V14L18 12V8C18 4.5 15.5 2 12 2Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-                    <path d="M9 19H15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                    <path d="M10 22H14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  </svg>
-                </div>
-                <div className="min-w-0">
-                  <div className="font-mono text-[10px] tracking-widest" style={{ color: '#6B6B8A' }}>// ALERTS</div>
-                  <p className="font-heading text-sm font-semibold tracking-wider" style={{ color: isSubscribed ? '#06D6A0' : '#6B6B8A' }}>
-                    NOTIFICATIONS {isSubscribed ? 'ON' : 'OFF'}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handlePushToggle}
-                disabled={pushLoading}
-                className="relative w-12 h-6 rounded-sm flex-shrink-0 transition-all"
-                style={{
-                  background: isSubscribed ? 'rgba(6,214,160,0.2)' : '#0A0A0F',
-                  border: `1px solid ${isSubscribed ? '#06D6A0' : '#252535'}`,
-                  opacity: pushLoading ? 0.6 : 1,
-                }}
-                aria-pressed={isSubscribed}
-                aria-label={`Notifications ${isSubscribed ? 'on' : 'off'}`}
-              >
-                <span
-                  className="absolute top-0.5 w-5 h-5 rounded-sm transition-all"
-                  style={{
-                    left: isSubscribed ? 'calc(100% - 22px)' : '2px',
-                    background: isSubscribed ? '#06D6A0' : '#6B6B8A',
-                    boxShadow: isSubscribed ? '0 0 8px rgba(6,214,160,0.6)' : 'none',
-                  }}
-                />
-              </button>
-            </div>
-            <p className="font-mono text-[9px] tracking-widest mt-3" style={{ color: '#6B6B8A' }}>
-              {isSubscribed
-                ? 'INCOMING TRANSMISSIONS WILL ALERT THIS DEVICE'
-                : 'ENABLE TO RECEIVE MESSAGES WHEN OFFLINE'}
-            </p>
-          </div>
-        )}
-
         {/* Logout */}
-        <button
-          onClick={handleLogout}
+        <button onClick={handleLogout}
           className="hud-btn w-full py-3 rounded-sm text-xs font-mono tracking-widest"
-          style={{ background: 'rgba(255,0,110,0.08)', border: '1px solid rgba(255,0,110,0.3)', color: '#FF006E' }}
-        >
+          style={{
+            background: 'rgba(255,0,110,0.08)',
+            border: '1px solid rgba(255,0,110,0.3)',
+            color: '#FF006E'
+          }}>
           ⏻ TERMINATE SESSION
         </button>
 
-        {/* Version */}
-        <div className="text-center">
-          <span className="font-mono text-[10px] tracking-widest" style={{ color: '#3A3A4A' }}>MAX CONNECTIVITY v2.0</span>
+        <div className="text-center pb-4">
+          <span className="font-mono text-[10px] tracking-widest"
+            style={{ color: '#3A3A4A' }}>
+            MAX CONNECTIVITY v2.0 // JARVIS PROTOCOL
+          </span>
         </div>
       </div>
-
       <BottomNav />
     </div>
   );
