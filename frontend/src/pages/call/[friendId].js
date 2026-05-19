@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import useAuthStore from '../../context/authStore';
-import useCallStore from '../../context/callStore';
 import useWebRTC from '../../hooks/useWebRTC';
 import { getSocket } from '../../hooks/useSocket';
+import { retrieveCallFromSession } from '../../context/callStore';
 import api from '../../utils/api';
 
 export const getServerSideProps = async () => ({ props: {} });
@@ -11,10 +11,10 @@ export const getServerSideProps = async () => ({ props: {} });
 export default function CallPage() {
   const router = useRouter();
   const { friendId } = router.query;
-  const { incomingCall, clearIncomingCall } = useCallStore();
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const [friend, setFriend] = useState(null);
+  const [callStatus, setCallStatus] = useState('Connecting...');
   const socket = getSocket();
   const initiatedRef = useRef(false);
 
@@ -31,40 +31,51 @@ export default function CallPage() {
     api.get(`/users/${friendId}`).then((r) => setFriend(r.data.user || r.data)).catch(() => {});
   }, [friendId]);
 
+  // Initiate or answer call once router + socket are ready
   useEffect(() => {
-    if (!friendId || !socket || initiatedRef.current) return;
+    if (!router.isReady || !friendId || !socket || initiatedRef.current) return;
     initiatedRef.current = true;
     const callType = router.query.type || 'video';
+    const isIncoming = router.query.incoming === 'true';
 
-    if (incomingCall) {
-      answerCall(incomingCall.from, incomingCall.offer, incomingCall.callType || callType);
-      clearIncomingCall();
+    if (isIncoming) {
+      const storedCall = retrieveCallFromSession();
+      if (storedCall) {
+        const from = storedCall.from || storedCall.callerId || friendId;
+        answerCall(from, storedCall.offer, storedCall.callType || callType);
+        setCallStatus('Answering...');
+      } else {
+        // Fallback: just answer without offer (peer will retry)
+        answerCall(friendId, null, callType);
+        setCallStatus('Answering...');
+      }
     } else {
       startCall(friendId, callType);
+      setCallStatus('Ringing...');
     }
-  }, [friendId, socket, incomingCall, router.query.type, answerCall, clearIncomingCall, startCall]);
+  }, [router.isReady, friendId, socket]);
 
   useEffect(() => {
     if (!socket) return;
 
-    const onAnswered = ({ answer }) => handleAnswer(answer);
+    const onAnswered = ({ answer }) => { handleAnswer(answer); setCallStatus('Connected'); };
     const onIce = ({ candidate }) => handleIceCandidate(candidate);
     const onEnded = () => router.back();
-    const onRejected = () => {
-      if (typeof window !== 'undefined') window.alert('Call rejected');
-      router.back();
-    };
+    const onRejected = () => router.back();
+    const onBusy = () => router.back();
 
     socket.on('call:answered', onAnswered);
     socket.on('call:ice', onIce);
     socket.on('call:ended', onEnded);
     socket.on('call:rejected', onRejected);
+    socket.on('call:busy', onBusy);
 
     return () => {
       socket.off('call:answered', onAnswered);
       socket.off('call:ice', onIce);
       socket.off('call:ended', onEnded);
       socket.off('call:rejected', onRejected);
+      socket.off('call:busy', onBusy);
     };
   }, [socket, handleAnswer, handleIceCandidate, router]);
 
@@ -117,7 +128,7 @@ export default function CallPage() {
             fontFamily: 'Share Tech Mono, monospace', fontSize: 12,
             color: '#6B6B8A', animation: 'pulse 1.5s infinite',
           }}>
-            {callState === 'calling' ? 'RINGING...' : callState === 'connected' ? 'CONNECTED' : 'CONNECTING...'}
+            {callState === 'connected' ? '● CONNECTED' : callStatus.toUpperCase()}
           </p>
         </div>
       )}

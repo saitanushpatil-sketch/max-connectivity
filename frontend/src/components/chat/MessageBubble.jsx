@@ -107,10 +107,13 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
                   <div
                     className="rounded-sm"
                     style={{
-                      width: 220, height: 160,
-                      background: 'linear-gradient(90deg, #12121A 25%, #1A1A26 50%, #12121A 75%)',
+                      width: message.memeData?.isSticker ? 120 : 220,
+                      height: message.memeData?.isSticker ? 120 : 160,
+                      background: message.memeData?.isSticker
+                        ? 'transparent'
+                        : 'linear-gradient(90deg, #12121A 25%, #1A1A26 50%, #12121A 75%)',
                       backgroundSize: '200% 100%',
-                      animation: 'shimmer 1.2s infinite',
+                      animation: message.memeData?.isSticker ? 'none' : 'shimmer 1.2s infinite',
                     }}
                   />
                 )}
@@ -118,14 +121,20 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
                   src={message.memeData?.url || message.content}
                   alt={message.memeData?.title || message.memeData?.name || 'GIF'}
                   className="rounded-sm"
-                  style={{ maxWidth: 220, width: '100%', height: 'auto', display: gifLoaded ? 'block' : 'none' }}
+                  style={{
+                    maxWidth: message.memeData?.isSticker ? 120 : 220,
+                    width: '100%', height: 'auto',
+                    display: gifLoaded ? 'block' : 'none',
+                    objectFit: message.memeData?.isSticker ? 'contain' : 'cover',
+                    background: message.memeData?.isSticker ? 'transparent' : undefined,
+                  }}
                   onLoad={() => setGifLoaded(true)}
                   loading="lazy"
                   decoding="async"
                   onError={(e) => { e.target.style.display = 'none'; }}
                 />
               </button>
-              {(message.memeData?.title || message.memeData?.name) && (
+              {!message.memeData?.isSticker && (message.memeData?.title || message.memeData?.name) && (
                 <span className="block mt-1 font-mono text-[10px] truncate" style={{ color: '#6B6B8A' }}>
                   {message.memeData.title || message.memeData.name}
                 </span>

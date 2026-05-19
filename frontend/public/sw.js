@@ -1,77 +1,99 @@
-const CACHE_NAME = 'max-v1';
+const CACHE_NAME = 'max-v2';
 const OFFLINE_URL = '/offline';
+const APP_ICON = '/icon-192.png';
 
-const STATIC_ASSETS = [
-  '/',
-  '/offline',
-  '/login',
-];
+const STATIC_ASSETS = ['/', '/offline', '/login'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(STATIC_ASSETS))
+      .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+      ))
+      .then(() => self.clients.claim())
   );
 });
 
+// ─── Push Notifications ────────────────────────────────────────────
+
 self.addEventListener('push', (event) => {
-  let payload = {};
+  if (!event.data) return;
+
+  let payload;
   try {
-    payload = event.data ? event.data.json() : {};
-  } catch (_) {
-    payload = { title: 'MAX', body: event.data?.text() || 'New notification' };
+    payload = event.data.json();
+  } catch {
+    payload = { title: 'MAX', body: event.data.text() };
   }
 
-  const title = payload.title || 'MAX Connectivity';
-  const data = payload.data || {};
-  const type = payload.type || 'message';
+  const {
+    title, body, senderName, senderAvatar,
+    conversationId, type, callType, url, timestamp,
+  } = payload;
+
+  const isCall = type === 'call';
+  const notifTitle = isCall
+    ? `📹 ${senderName || 'Someone'} is calling...`
+    : `MAX · ${senderName || 'New message'}`;
 
   const options = {
-    body: payload.body || '',
-    icon: '/icon-192.png',
-    badge: '/badge-72.png',
-    vibrate: [100, 50, 100, 50, 100],
-    requireInteraction: type === 'call',
-    tag: data.conversationId || 'max-notification',
+    body: body || (isCall ? 'Incoming video call' : 'New message'),
+    icon: APP_ICON,
+    badge: APP_ICON,
+    tag: conversationId || 'max-notification',
     renotify: true,
-    actions: type === 'message' ? [
-      { action: 'reply', title: '💬 Reply' },
-      { action: 'open', title: '📱 Open' }
-    ] : [
-      { action: 'accept', title: '✅ Accept' },
-      { action: 'decline', title: '❌ Decline' }
-    ],
+    requireInteraction: isCall,
+    silent: false,
+    timestamp: timestamp || Date.now(),
+    vibrate: isCall
+      ? [500, 200, 500, 200, 500, 200, 500]
+      : [200, 100, 200],
     data: {
-      url: data.url || '/chats',
-      conversationId: data.conversationId,
-      type
+      url: url || '/chats',
+      conversationId,
+      type: type || 'message',
+      callType,
     },
-    silent: false
+    actions: isCall ? [
+      { action: 'accept', title: '✅ Accept' },
+      { action: 'decline', title: '❌ Decline' },
+    ] : [
+      { action: 'reply', title: '💬 Reply' },
+      { action: 'open', title: '📱 Open' },
+    ],
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    self.registration.showNotification(notifTitle, options)
+  );
 });
+
+// ─── Notification Click ────────────────────────────────────────────
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  
-  const data = event.notification.data || {};
-  let targetUrl = data.url || '/chats';
+  const { url, conversationId, type, callType } = event.notification.data || {};
+  const action = event.action;
 
-  if (event.action === 'reply') {
-    targetUrl += '?focus=input';
-  } else if (event.action === 'accept') {
-    targetUrl = `/call/${data.conversationId}`;
-  } else if (event.action === 'decline') {
-    // Just close the notification (done above)
+  let targetUrl = url || '/chats';
+
+  if (action === 'accept' && type === 'call') {
+    targetUrl = url || `/call/${conversationId}?incoming=true&type=${callType || 'video'}`;
+  } else if (action === 'decline' && type === 'call') {
+    // Just close — no navigation
     return;
+  } else if (action === 'reply') {
+    targetUrl = `${url || `/chat/${conversationId}`}?focus=input`;
+  } else if (action === 'open' || !action) {
+    targetUrl = url || `/chat/${conversationId}`;
   }
 
   event.waitUntil(
@@ -92,10 +114,24 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
+// ─── Subscription Refresh ──────────────────────────────────────────
+
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(
+    self.registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: self.VAPID_PUBLIC_KEY,
+    }).catch(() => { /* Handled on next login */ })
+  );
+});
+
+// ─── Network-first fetch strategy ─────────────────────────────────
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   if (event.request.url.includes('/api/')) return;
   if (event.request.url.includes('socket.io')) return;
+  if (event.request.url.includes('giphy.com')) return;
 
   event.respondWith(
     fetch(event.request)

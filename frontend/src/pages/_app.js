@@ -2,14 +2,16 @@ import { SessionProvider } from 'next-auth/react';
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import useAuthStore from '../context/authStore';
-import useCallStore from '../context/callStore';
+import useCallStore, { storeCallToSession } from '../context/callStore';
+import { getSocket } from '../hooks/useSocket';
 import useSocket from '../hooks/useSocket';
 import IncomingCallModal from '../components/call/IncomingCallModal';
 import '../styles/globals.css';
 
 const PUBLIC_ROUTES = [
-  '/login', '/signup', '/offline', 
-  '/auth/google-sync', '/api/auth/callback/google'
+  '/login', '/signup', '/offline',
+  '/auth/google-sync', '/api/auth/callback/google',
+  '/call/',
 ];
 
 function AppInner({ Component, pageProps }) {
@@ -42,14 +44,22 @@ function AppInner({ Component, pageProps }) {
 
   const handleAcceptCall = useCallback(() => {
     if (!incomingCall) return;
-    const { callerId, callType } = incomingCall;
+    const { callerId, from, callType } = incomingCall;
+    const targetId = from || callerId;
+    // Persist call data across navigation
+    storeCallToSession(incomingCall);
     clearIncomingCall();
-    router.push(`/call/${callerId}?type=${callType || 'video'}&incoming=1`);
+    router.push(`/call/${targetId}?type=${callType || 'video'}&incoming=true`);
   }, [incomingCall, clearIncomingCall, router]);
 
   const handleRejectCall = useCallback(() => {
+    if (incomingCall) {
+      const socket = getSocket();
+      const targetId = incomingCall.from || incomingCall.callerId;
+      socket?.emit('call:reject', { to: targetId });
+    }
     clearIncomingCall();
-  }, [clearIncomingCall]);
+  }, [incomingCall, clearIncomingCall]);
 
   return (
     <>

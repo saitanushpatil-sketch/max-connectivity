@@ -4,7 +4,7 @@ import Link from 'next/link';
 import useAuthStore from '../../context/authStore';
 import useSocket from '../../hooks/useSocket';
 import MessageBubble from '../../components/chat/MessageBubble';
-import MemePanel from '../../components/meme/MemePanel';
+import GifStickerPanel from '../../components/meme/GifStickerPanel';
 import Avatar from '../../components/ui/Avatar';
 import api from '../../utils/api';
 import useToast from '../../hooks/useToast';
@@ -183,17 +183,17 @@ export default function ChatPage() {
     }
   }, [input, sending, convId, friendId, user, replyTo, sendMessage, emitTypingStop, toast]);
 
-  const handleSendGif = useCallback(async (gif) => {
+  const handleSendGif = useCallback(async (item) => {
     setShowMemePanel(false);
     setSending(true);
     hapticTap(10);
-    const content = gif.url;
+    const content = item.title || item.url || 'GIF';
     const memeData = {
-      id: gif.id,
-      title: gif.title,
-      url: gif.url,
-      preview: gif.preview,
-      name: gif.title,
+      id: item.id,
+      url: item.url,
+      preview: item.preview,
+      title: item.title,
+      isSticker: item.type === 'sticker',
     };
     const tempMsg = {
       _id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -459,8 +459,7 @@ export default function ChatPage() {
 
       {/* Meme Panel */}
       {showMemePanel && (
-        <MemePanel
-          searchQuery={input}
+        <GifStickerPanel
           onSelect={handleSendGif}
           onClose={() => setShowMemePanel(false)}
         />
