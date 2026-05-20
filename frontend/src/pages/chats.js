@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import useAuthStore from '../context/authStore';
@@ -26,7 +26,7 @@ const timeAgo = (date) => {
 
 export const getServerSideProps = async () => ({ props: {} });
 
-export default function Chats() {
+function Chats() {
   const { user } = useAuthStore();
   const router = useRouter();
   const [friends, setFriends] = useState([]);
@@ -203,3 +203,5 @@ export default function Chats() {
     </div>
   );
 }
+
+export default memo(Chats);

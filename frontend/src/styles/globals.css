@@ -38,6 +38,7 @@ html, body {
   font-family: 'Exo 2', sans-serif;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeSpeed;
 }
 
 #__next {
@@ -104,15 +105,10 @@ html, body {
   border-width: 0 2px 2px 0;
 }
 
-/* GPU / animation performance */
-.typing-dot,
-.online-pulse,
-.meme-panel-enter,
-.animate-fade-in,
-.scan-line-container::after,
-.holo-hover::before,
-.e2e-shield-pulse,
-.meme-skeleton {
+/* GPU / animation performance - only MessageBubble and Avatar use will-change */
+.message-bubble-row,
+.bubble-own,
+.bubble-other {
   will-change: transform;
 }
 
@@ -123,12 +119,12 @@ html, body {
   border-radius: 50%;
   background: var(--cyan);
   display: inline-block;
-  animation: bounceDot 1.4s infinite ease-in-out;
+  animation: bounceDot 0.7s infinite ease-in-out;
   transform: translateZ(0);
 }
 .typing-dot:nth-child(1) { animation-delay: 0s; }
-.typing-dot:nth-child(2) { animation-delay: 0.2s; }
-.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+.typing-dot:nth-child(2) { animation-delay: 0.1s; }
+.typing-dot:nth-child(3) { animation-delay: 0.2s; }
 
 @keyframes bounceDot {
   0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
@@ -205,7 +201,7 @@ html, body {
 .online-pulse {
   background: var(--green);
   box-shadow: 0 0 0 0 rgba(6, 214, 160, 0.4);
-  animation: onlinePulse 2.5s infinite;
+  animation: onlinePulse 1.25s infinite;
 }
 @keyframes onlinePulse {
   0% { box-shadow: 0 0 0 0 rgba(6, 214, 160, 0.4); }
@@ -213,22 +209,13 @@ html, body {
   100% { box-shadow: 0 0 0 0 rgba(6, 214, 160, 0); }
 }
 
-/* Scan line animation overlay */
+/* Scan line animation overlay - DISABLED for performance */
 .scan-line-container {
   position: relative;
   overflow: hidden;
 }
 .scan-line-container::after {
-  content: '';
-  position: absolute;
-  top: -100%;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(0, 245, 255, 0.2), transparent);
-  animation: scanLine 6s linear infinite;
-  will-change: transform;
-  pointer-events: none;
+  display: none;
 }
 @keyframes scanLine {
   0% { top: -2px; }
@@ -264,7 +251,7 @@ html, body {
 
 /* Page transition wrapper */
 .page-enter {
-  animation: pageEnter 0.25s ease-out;
+  animation: pageEnter 0.125s ease-out;
   will-change: transform, opacity;
 }
 @keyframes pageEnter {
@@ -274,7 +261,7 @@ html, body {
 
 /* Meme panel slide */
 .meme-panel-enter {
-  animation: memePanelEnter 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: memePanelEnter 0.15s cubic-bezier(0.32, 0.72, 0, 1);
   transform: translateZ(0);
 }
 
@@ -288,7 +275,7 @@ html, body {
   );
   background-size: 200% 100%;
   border: 1px solid #252535;
-  animation: memeSkeletonShimmer 1.2s ease-in-out infinite;
+  animation: memeSkeletonShimmer 0.6s ease-in-out infinite;
 }
 
 @keyframes memeSkeletonShimmer {
@@ -298,7 +285,7 @@ html, body {
 
 /* E2E encryption badge */
 .e2e-shield-pulse {
-  animation: e2eShieldPulse 2.5s ease-in-out infinite;
+  animation: e2eShieldPulse 1.25s ease-in-out infinite;
   transform: translateZ(0);
 }
 
@@ -350,7 +337,7 @@ html, body {
   background: var(--cyan);
   border-radius: 50%;
   box-shadow: 0 0 8px var(--cyan), 0 0 16px rgba(0, 245, 255, 0.5);
-  animation: navDotPulse 2s ease-in-out infinite;
+  animation: navDotPulse 1s ease-in-out infinite;
 }
 
 /* Holographic shimmer on hover */
@@ -366,7 +353,7 @@ html, body {
   height: 100%;
   background: linear-gradient(90deg, transparent, rgba(0, 245, 255, 0.06), transparent);
   transform: skewX(-20deg);
-  transition: left 0.5s;
+  transition: left 0.25s;
 }
 .holo-hover:hover::before { left: 150%; }
 
@@ -394,10 +381,10 @@ button:active:not(:disabled) {
 .game-card-icon {
   font-size: 2.5rem;
   display: inline-block;
-  animation: gameIconFloat 3s ease-in-out infinite;
+  animation: gameIconFloat 1.5s ease-in-out infinite;
 }
 .game-card-icon-active {
-  animation: gameIconPulse 2s ease-in-out infinite;
+  animation: gameIconPulse 1s ease-in-out infinite;
 }
 @keyframes gameIconFloat {
   0%, 100% { transform: translateY(0); }
@@ -421,7 +408,7 @@ button:active:not(:disabled) {
   height: 100%;
   min-height: 72px;
   transform-style: preserve-3d;
-  transition: transform 0.45s cubic-bezier(0.4, 0.2, 0.2, 1);
+  transition: transform 0.225s cubic-bezier(0.4, 0.2, 0.2, 1);
 }
 .match-card-flipped .match-card-inner {
   transform: rotateY(180deg);
@@ -447,7 +434,7 @@ button:active:not(:disabled) {
   100% { transform: scale(1); opacity: 1; }
 }
 .new-best-pop {
-  animation: newBestPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: newBestPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes badgeBounceIn {
@@ -456,17 +443,17 @@ button:active:not(:disabled) {
   100% { transform: scale(1); opacity: 1; }
 }
 .badge-bounce {
-  animation: badgeBounceIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  animation: badgeBounceIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
 }
 
 .nav-link-active {
   transform: translateY(-2px);
-  transition: transform 0.2s ease, color 0.2s ease;
+  transition: transform 0.1s ease, color 0.1s ease;
 }
 
 .nav-link-active svg {
   filter: drop-shadow(0 0 8px #00F5FF);
-  transition: filter 0.2s ease;
+  transition: filter 0.1s ease;
 }
 
 @keyframes navDotPulse {
@@ -475,7 +462,7 @@ button:active:not(:disabled) {
 }
 
 .skeleton-pulse {
-  animation: skeletonPulse 1.5s ease-in-out infinite;
+  animation: skeletonPulse 0.75s ease-in-out infinite;
 }
 
 @keyframes skeletonPulse {
@@ -489,7 +476,7 @@ button:active:not(:disabled) {
   border: 2px solid rgba(0, 245, 255, 0.2);
   border-top-color: #00F5FF;
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin 0.4s linear infinite;
 }
 
 @keyframes spin {
@@ -504,7 +491,7 @@ button:active:not(:disabled) {
 }
 
 .challenge-picker-slide {
-  animation: challengeSlideUp 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: challengeSlideUp 0.175s cubic-bezier(0.32, 0.72, 0, 1);
 }
 @keyframes challengeSlideUp {
   from { transform: translateY(100%); opacity: 0; }

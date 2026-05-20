@@ -1,14 +1,23 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import useAuthStore from '../../context/authStore';
 import useSocket from '../../hooks/useSocket';
-import MessageBubble from '../../components/chat/MessageBubble';
-import GifStickerPanel from '../../components/meme/GifStickerPanel';
 import Avatar from '../../components/ui/Avatar';
 import api from '../../utils/api';
 import useToast from '../../hooks/useToast';
 import hapticTap from '../../utils/haptic';
+
+const MessageBubble = dynamic(() => import('../../components/chat/MessageBubble'), {
+  ssr: false,
+  loading: () => <div style={{ height: 60 }} />
+});
+
+const GifPanel = dynamic(() => import('../../components/meme/GifPanel'), {
+  ssr: false,
+  loading: () => <div style={{ height: '65vh', background: '#0D0D14' }} />
+});
 
 const buildConvId = (a, b) => [a, b].sort().join('_');
 const MESSAGE_MAX_LENGTH = 2000;
@@ -43,6 +52,7 @@ export default function ChatPage() {
   const [socketConnected, setSocketConnected] = useState(true);
   const messagesContainerRef = useRef(null);
   const { toast } = useToast();
+  const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
 
   // Derive friendId from convId
   const friendId = convId ? convId.split('_').find((id) => id !== user?._id) : null;
@@ -187,13 +197,12 @@ export default function ChatPage() {
     setShowMemePanel(false);
     setSending(true);
     hapticTap(10);
-    const content = item.title || item.url || 'GIF';
+    const content = item.title || 'GIF';
     const memeData = {
-      id: item.id,
       url: item.url,
       preview: item.preview,
       title: item.title,
-      isSticker: item.type === 'sticker',
+      isSticker: item.isSticker,
     };
     const tempMsg = {
       _id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -272,7 +281,15 @@ export default function ChatPage() {
     if (!el) return;
     const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     setShowScrollFab(distFromBottom > 300);
-  }, []);
+
+    // Simple virtualization: calculate visible range
+    const scrollTop = el.scrollTop;
+    const itemHeight = 80; // Approximate height of a message bubble
+    const viewportHeight = el.clientHeight;
+    const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - 10);
+    const endIndex = Math.min(messages.length, Math.ceil((scrollTop + viewportHeight) / itemHeight) + 10);
+    setVisibleRange({ start: startIndex, end: endIndex });
+  }, [messages.length]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -416,7 +433,7 @@ export default function ChatPage() {
             <span className="font-mono text-xs" style={{ color: '#6B6B8A' }}>CHANNEL SECURE — SEND FIRST MESSAGE</span>
           </div>
         )}
-        {messages.map((msg) => (
+        {messages.slice(visibleRange.start, visibleRange.end).map((msg) => (
           <MessageBubble
             key={msg._id}
             message={msg}
@@ -459,7 +476,7 @@ export default function ChatPage() {
 
       {/* Meme Panel */}
       {showMemePanel && (
-        <GifStickerPanel
+        <GifPanel
           onSelect={handleSendGif}
           onClose={() => setShowMemePanel(false)}
         />

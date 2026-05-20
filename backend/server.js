@@ -13,6 +13,7 @@ const messageRoutes = require('./routes/messages');
 const memeRoutes = require('./routes/memes');
 const pushRoutes = require('./routes/push');
 const gameRoutes = require('./routes/games');
+const gifRoutes = require('./routes/gifs');
 const { configureWebPush } = require('./utils/pushService');
 
 const app = express();
@@ -53,6 +54,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/memes', memeRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/games', gameRoutes);
+app.use('/api/gifs', gifRoutes);
 
 configureWebPush();
 

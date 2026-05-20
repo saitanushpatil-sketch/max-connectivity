@@ -1,6 +1,13 @@
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import CameraExperience from '../components/camera/CameraExperience';
+import dynamic from 'next/dynamic';
+
+const CameraExperience = dynamic(() => import('../components/camera/CameraExperience'), {
+  ssr: false,
+  loading: () => <div className="fixed inset-0 z-40 flex items-center justify-center" style={{ background: '#000' }}>
+    <div className="flex gap-1"><span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" /></div>
+  </div>
+});
 
 export const getServerSideProps = async () => ({ props: {} });
 

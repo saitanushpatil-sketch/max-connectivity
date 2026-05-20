@@ -4,9 +4,10 @@ import useAuthStore from '../context/authStore';
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
 
-let socketInstance = null;
-
-export const getSocket = () => socketInstance;
+// TOP of file, outside hook:
+let _socket = null;
+export const getSocket = () => _socket;
+export const setSocket = (s) => { _socket = s; };
 
 const useSocket = (handlers = {}) => {
   const { token, isAuthenticated } = useAuthStore();
@@ -16,17 +17,19 @@ const useSocket = (handlers = {}) => {
   useEffect(() => {
     if (!isAuthenticated || !token) return;
 
-    if (!socketInstance) {
-      socketInstance = io(SOCKET_URL, {
+    if (!_socket) {
+      const newSocket = io(SOCKET_URL, {
         auth: { token },
         transports: ['websocket', 'polling'],
         reconnection: true,
-        reconnectionAttempts: 5,
+        reconnectionAttempts: 10,
         reconnectionDelay: 1000,
       });
+      _socket = newSocket;
+      setSocket(newSocket);
     }
 
-    const socket = socketInstance;
+    const socket = _socket;
 
     const handleConnect = () => handlersRef.current.onConnect?.();
     const handleDisconnect = () => handlersRef.current.onDisconnect?.();
@@ -41,7 +44,7 @@ const useSocket = (handlers = {}) => {
   }, [isAuthenticated, token]);
 
   useEffect(() => {
-    const socket = socketInstance;
+    const socket = _socket;
     if (!socket) return;
 
     const handleReceiveMessage = (data) => handlersRef.current.onReceiveMessage?.(data);
@@ -96,25 +99,25 @@ const useSocket = (handlers = {}) => {
   }, [handlersRef]);
 
   const emitTttChallenge = useCallback((opponentId, gameId) => {
-    socketInstance?.emit('ttt_challenge', { opponentId, gameId });
+    _socket?.emit('ttt_challenge', { opponentId, gameId });
   }, []);
 
   const emitTttMove = useCallback((gameId, board, nextPlayer, opponentId) => {
-    socketInstance?.emit('ttt_move', { gameId, board, nextPlayer, opponentId });
+    _socket?.emit('ttt_move', { gameId, board, nextPlayer, opponentId });
   }, []);
 
   const emitTttResult = useCallback((gameId, winner, opponentId) => {
-    socketInstance?.emit('ttt_result', { gameId, winner, opponentId });
+    _socket?.emit('ttt_result', { gameId, winner, opponentId });
   }, []);
 
   const joinConversation = useCallback((conversationId) => {
-    socketInstance?.emit('join_conversation', { conversationId });
+    _socket?.emit('join_conversation', { conversationId });
   }, []);
 
   const sendMessage = useCallback((data) => {
     return new Promise((resolve, reject) => {
-      if (!socketInstance?.connected) return reject(new Error('Socket not connected'));
-      socketInstance.emit('send_message', data, (response) => {
+      if (!_socket?.connected) return reject(new Error('Socket not connected'));
+      _socket.emit('send_message', data, (response) => {
         if (response?.error) reject(new Error(response.error));
         else resolve(response);
       });
@@ -122,30 +125,31 @@ const useSocket = (handlers = {}) => {
   }, []);
 
   const emitTypingStart = useCallback((conversationId, receiverId) => {
-    socketInstance?.emit('typing_start', { conversationId, receiverId });
+    _socket?.emit('typing_start', { conversationId, receiverId });
   }, []);
 
   const emitTypingStop = useCallback((conversationId, receiverId) => {
-    socketInstance?.emit('typing_stop', { conversationId, receiverId });
+    _socket?.emit('typing_stop', { conversationId, receiverId });
   }, []);
 
   const reactMessage = useCallback((messageId, emoji, conversationId) => {
-    socketInstance?.emit('react_message', { messageId, emoji, conversationId });
+    _socket?.emit('react_message', { messageId, emoji, conversationId });
   }, []);
 
   const markRead = useCallback((conversationId, senderId) => {
-    socketInstance?.emit('mark_read', { conversationId, senderId });
+    _socket?.emit('mark_read', { conversationId, senderId });
   }, []);
 
   const disconnect = useCallback(() => {
-    if (socketInstance) {
-      socketInstance.disconnect();
-      socketInstance = null;
+    if (_socket) {
+      _socket.disconnect();
+      _socket = null;
+      setSocket(null);
     }
   }, []);
 
   return {
-    socket: socketInstance,
+    socket: _socket,
     joinConversation,
     sendMessage,
     emitTypingStart,
@@ -156,7 +160,7 @@ const useSocket = (handlers = {}) => {
     emitTttChallenge,
     emitTttMove,
     emitTttResult,
-    isConnected: () => socketInstance?.connected ?? false,
+    isConnected: () => _socket?.connected ?? false,
   };
 };
 

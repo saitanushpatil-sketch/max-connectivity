@@ -105,10 +105,10 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
               >
                 {!gifLoaded && (
                   <div
-                    className="rounded-sm"
                     style={{
-                      width: message.memeData?.isSticker ? 120 : 220,
-                      height: message.memeData?.isSticker ? 120 : 160,
+                      width: message.memeData?.isSticker ? 140 : 220,
+                      height: message.memeData?.isSticker ? 140 : 160,
+                      borderRadius: message.memeData?.isSticker ? 0 : 8,
                       background: message.memeData?.isSticker
                         ? 'transparent'
                         : 'linear-gradient(90deg, #12121A 25%, #1A1A26 50%, #12121A 75%)',
@@ -120,13 +120,13 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
                 <img
                   src={message.memeData?.url || message.content}
                   alt={message.memeData?.title || message.memeData?.name || 'GIF'}
-                  className="rounded-sm"
                   style={{
-                    maxWidth: message.memeData?.isSticker ? 120 : 220,
+                    maxWidth: message.memeData?.isSticker ? 140 : 220,
                     width: '100%', height: 'auto',
                     display: gifLoaded ? 'block' : 'none',
                     objectFit: message.memeData?.isSticker ? 'contain' : 'cover',
                     background: message.memeData?.isSticker ? 'transparent' : undefined,
+                    borderRadius: message.memeData?.isSticker ? 0 : 8,
                   }}
                   onLoad={() => setGifLoaded(true)}
                   loading="lazy"
