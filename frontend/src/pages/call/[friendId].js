@@ -23,7 +23,7 @@ export default function CallPage() {
   const socket = getSocket();
 
   const {
-    callState, isMuted, isVideoOff, formattedDuration,
+    callState, isMuted, isVideoOff, formattedDuration, callError, setCallError,
     startCall, answerCall, endCall,
     handleIceCandidate, handleAnswer,
     toggleMute, toggleVideo, flipCamera,
@@ -157,6 +157,31 @@ export default function CallPage() {
         <p style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 12, color: '#6B6B8A' }}>
           {endReason || 'Call ended'} · {formattedDuration}
         </p>
+      </div>
+    );
+  }
+
+  if (callError) {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, background: '#0A0A0F',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        gap: 16, zIndex: 9998, px: 4, textAlign: 'center'
+      }}>
+        <div style={{ fontSize: 40 }}>⚠️</div>
+        <h2 style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: 24, color: '#FF006E' }}>CALL FAILED</h2>
+        <p style={{ fontFamily: 'Share Tech Mono, monospace', fontSize: 12, color: '#6B6B8A', maxWidth: 300 }}>
+          {callError}
+        </p>
+        <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
+          <button onClick={() => router.back()} className="hud-btn hud-btn-ghost px-4 py-2 rounded-sm text-sm">
+            GO BACK
+          </button>
+          <button onClick={() => { setCallError(null); window.location.reload(); }} className="hud-btn hud-btn-primary px-4 py-2 rounded-sm text-sm">
+            RETRY
+          </button>
+        </div>
       </div>
     );
   }

@@ -4,16 +4,6 @@ const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    {
-      urls: [
-        'turn:openrelay.metered.ca:80',
-        'turn:openrelay.metered.ca:443',
-        'turn:openrelay.metered.ca:443?transport=tcp',
-      ],
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
   ],
   iceCandidatePoolSize: 10,
 };
@@ -25,6 +15,7 @@ export default function useWebRTC({ socket, localVideoRef, remoteVideoRef }) {
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
+  const [callError, setCallError] = useState(null);
   const timerRef = useRef(null);
   const remoteUserId = useRef(null);
   const pendingCandidates = useRef([]);
@@ -41,6 +32,7 @@ export default function useWebRTC({ socket, localVideoRef, remoteVideoRef }) {
     pendingCandidates.current = [];
     setCallState('idle');
     setCallDuration(0);
+    setCallError(null);
     setIsMuted(false);
     setIsVideoOff(false);
     remoteUserId.current = null;
@@ -78,16 +70,21 @@ export default function useWebRTC({ socket, localVideoRef, remoteVideoRef }) {
   }, [socket, remoteVideoRef, cleanup]);
 
   const getMedia = async (callType) => {
-    const constraints = callType === 'video'
-      ? { video: { facingMode: 'user', width: 640, height: 480 }, audio: true }
-      : { video: false, audio: true };
+    try {
+      const constraints = callType === 'video'
+        ? { video: { facingMode: 'user', width: 640, height: 480 }, audio: true }
+        : { video: false, audio: true };
 
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    localStream.current = stream;
-    if (localVideoRef?.current) {
-      localVideoRef.current.srcObject = stream;
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      localStream.current = stream;
+      if (localVideoRef?.current) {
+        localVideoRef.current.srcObject = stream;
+      }
+      return stream;
+    } catch (err) {
+      setCallError('Could not access camera/microphone. Please allow permissions.');
+      throw err;
     }
-    return stream;
   };
 
   const startCall = useCallback(async (friendId, callType = 'video') => {
@@ -116,7 +113,7 @@ export default function useWebRTC({ socket, localVideoRef, remoteVideoRef }) {
       });
     } catch (err) {
       cleanup();
-      if (typeof window !== 'undefined') window.alert('Could not access camera/microphone');
+      if (!callError) setCallError('Failed to establish connection.');
     }
   }, [createPC, cleanup, socket]);
 
@@ -153,6 +150,7 @@ export default function useWebRTC({ socket, localVideoRef, remoteVideoRef }) {
       }
     } catch (err) {
       cleanup();
+      if (!callError) setCallError('Failed to answer call.');
     }
   }, [createPC, cleanup, socket]);
 
@@ -255,6 +253,8 @@ export default function useWebRTC({ socket, localVideoRef, remoteVideoRef }) {
     isMuted,
     isVideoOff,
     callDuration,
+    callError,
+    setCallError,
     formattedDuration: formatDuration(callDuration),
     startCall,
     answerCall,

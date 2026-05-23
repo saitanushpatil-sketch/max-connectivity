@@ -3,9 +3,12 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import useAuthStore from '../context/authStore';
 import useCallStore, { storeCallToSession } from '../context/callStore';
+import Head from 'next/head';
 import { getSocket } from '../hooks/useSocket';
 import useSocket from '../hooks/useSocket';
 import IncomingCallModal from '../components/call/IncomingCallModal';
+import GreetingOverlay from '../components/ui/GreetingOverlay';
+import { AnimatePresence, motion } from 'framer-motion';
 import '../styles/globals.css';
 
 const PUBLIC_ROUTES = [
@@ -63,6 +66,9 @@ function AppInner({ Component, pageProps }) {
 
   return (
     <>
+      <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover, interactive-widget=resizes-content" />
+      </Head>
       {/* Reconnection banner */}
       {!socketConnected && isAuthenticated && (
         <div style={{
@@ -102,7 +108,19 @@ function AppInner({ Component, pageProps }) {
           display: 'flex', flexDirection: 'column',
           overflow: 'hidden'
         }}>
-          <Component {...pageProps} key={router.pathname} />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={router.pathname}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}
+            >
+              <Component {...pageProps} />
+            </motion.div>
+          </AnimatePresence>
+          <GreetingOverlay />
         </div>
       </div>
     </>

@@ -6,7 +6,13 @@ import api from '../utils/api';
 import hapticTap from '../utils/haptic';
 import useAuthStore from '../context/authStore';
 
-const CATEGORIES = ['All', 'Trending 🔥', 'Telugu', 'Hindi', 'English', 'Desi', 'Wholesome', 'Dark', 'Templates', 'Random'];
+const CATEGORIES = ['All', 'Telugu', 'Hindi', 'Bollywood', 'Internet'];
+
+const LOCAL_MEMES = [
+  ...['mahesh-babu-pointing', 'allu-arjun-pushpa', 'pawan-kalyan-serious', 'ntr-angry', 'brahmanandam-reaction', 'venkatesh-surprised'].map(n => ({ _id: n, name: n.replace(/-/g, ' ').toUpperCase(), url: `/memes/${n}.svg`, category: 'Telugu', isTemplate: true })),
+  ...['srk-arms-open', 'ranveer-screaming', 'akshay-salute', 'amitabh-pointing'].map(n => ({ _id: n, name: n.replace(/-/g, ' ').toUpperCase(), url: `/memes/${n}.svg`, category: 'Hindi', isTemplate: true })),
+  ...['drake-approve', 'distracted-boyfriend', 'this-is-fine', 'surprised-pikachu', 'two-buttons', 'gru-plan', 'stonks', 'brain-expanding', 'panik-kalm', 'gigachad'].map(n => ({ _id: n, name: n.replace(/-/g, ' ').toUpperCase(), url: `/memes/${n}.svg`, category: 'Internet', isTemplate: true }))
+];
 
 export const getServerSideProps = async () => ({ props: {} });
 
@@ -36,50 +42,37 @@ export default function MemesPage() {
     api.get('/friends').then(res => setFriends(res.data.friends || [])).catch(() => {});
   }, []);
 
-  const mapGif = (g) => ({
-    _id: g.id,
-    name: g.title,
-    url: g.url,
-    preview: g.preview,
-  });
-
-  const fetchMemes = useCallback(async (pageNum, replace = false) => {
+  const fetchMemes = useCallback(async () => {
     setLoading(true);
     try {
-      const isSearch = debouncedSearch.trim().length > 0;
-      const isTrendingCat = category === 'Trending 🔥';
-      const isRandomCat = category === 'Random';
-
-      let data;
-      if (isRandomCat && !isSearch) {
-        const typeMap = { Telugu: 'tfi', Hindi: 'hindi', English: 'english', Desi: 'hindi' };
-        const type = typeMap[category] || 'english';
-        ({ data } = await api.get(`/memes/collection?type=${type}`));
-      } else if (isSearch || (category !== 'All' && !isTrendingCat)) {
-        const q = isSearch ? debouncedSearch : category;
-        ({ data } = await api.get(`/memes/search?q=${encodeURIComponent(q)}&limit=20`));
-      } else {
-        ({ data } = await api.get('/memes/trending'));
+      const q = debouncedSearch.toLowerCase();
+      let filtered = LOCAL_MEMES;
+      
+      if (category !== 'All') {
+        const catMap = { 'Bollywood': 'Hindi' };
+        const mappedCat = catMap[category] || category;
+        filtered = filtered.filter(m => m.category === mappedCat);
+      }
+      
+      if (q) {
+        filtered = filtered.filter(m => m.name.toLowerCase().includes(q) || m.category.toLowerCase().includes(q));
       }
 
-      const items = (data.gifs || []).map(mapGif);
-      setMemes((prev) => (replace ? items : [...prev, ...items]));
-      setHasMore(!!data.next);
-      setTotal(items.length);
-    } catch (err) {
+      setMemes(filtered);
+      setTotal(filtered.length);
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
   }, [debouncedSearch, category]);
 
   useEffect(() => {
-    fetchMemes(1, true);
-    setPage(1);
+    fetchMemes();
   }, [fetchMemes]);
 
   useEffect(() => {
     if (category === 'All' && !debouncedSearch.trim()) {
-      api.get('/memes/trending').then((res) => setTrending((res.data.gifs || []).map(mapGif))).catch(() => {});
+      setTrending(LOCAL_MEMES.slice(0, 5));
     }
   }, [category, debouncedSearch]);
 
@@ -96,7 +89,7 @@ export default function MemesPage() {
 
   const handleAction = (meme) => {
     hapticTap(10);
-    if (meme.isTemplate || meme.source === 'imgflip' || meme.source === 'memegen') {
+    if (meme.isTemplate) {
       setEditorTemplate(meme);
     } else {
       setShareMeme(meme);

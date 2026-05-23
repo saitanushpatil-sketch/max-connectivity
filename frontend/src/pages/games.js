@@ -22,90 +22,72 @@ const GameLoader = () => (
 
 const Game2048 = dynamic(() => import('../components/games/Game2048'), { ssr: false, loading: () => <GameLoader /> });
 const TicTacToe = dynamic(() => import('../components/games/TicTacToe'), { ssr: false, loading: () => <GameLoader /> });
-const DesiQuiz = dynamic(() => import('../components/games/DesiQuiz'), { ssr: false, loading: () => <GameLoader /> });
 const ReactionTest = dynamic(() => import('../components/games/ReactionTest'), { ssr: false, loading: () => <GameLoader /> });
-const CarRacer = dynamic(() => import('../components/games/CarRacer'), { ssr: false, loading: () => <GameLoader /> });
-const SpaceShooter = dynamic(() => import('../components/games/SpaceShooter'), { ssr: false, loading: () => <GameLoader /> });
+const Snake = dynamic(() => import('../components/games/Snake'), { ssr: false, loading: () => <GameLoader /> });
+const SimonSays = dynamic(() => import('../components/games/SimonSays'), { ssr: false, loading: () => <GameLoader /> });
+const WhackAMole = dynamic(() => import('../components/games/WhackAMole'), { ssr: false, loading: () => <GameLoader /> });
+const TypeRacer = dynamic(() => import('../components/games/TypeRacer'), { ssr: false, loading: () => <GameLoader /> });
+const Wordle = dynamic(() => import('../components/games/Wordle'), { ssr: false, loading: () => <GameLoader /> });
+const FlappyBird = dynamic(() => import('../components/games/FlappyBird'), { ssr: false, loading: () => <GameLoader /> });
+const Cryptogram = dynamic(() => import('../components/games/Cryptogram'), { ssr: false, loading: () => <GameLoader /> });
 
 const GAMES = [
   {
-    key: '2048', label: '2048', genre: 'PUZZLE', statKey: 'game2048HighScore',
-    format: (v) => v || 0, color: '#00F5FF', diff: 2,
-    art: () => (
-      <div style={{display:'flex',flexWrap:'wrap',gap:3,padding:6,justifyContent:'center',alignItems:'center',height:'100%'}}>
-        {[2,4,8,16,32,64,128,256].map((n,i)=>(
-          <div key={n} style={{width:24,height:24,borderRadius:4,background:`rgba(0,245,255,${0.05+i*0.08})`,border:'1px solid rgba(0,245,255,0.3)',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Rajdhani,sans-serif',fontWeight:700,fontSize:8,color:'#00F5FF',animation:`tileFloat ${1.5+i*0.15}s ease-in-out ${i*0.1}s infinite alternate`}}>{n}</div>
-        ))}
-      </div>
-    ),
-  },
-  {
-    key: 'reaction', label: 'SPEED TAP', genre: 'REFLEX', statKey: 'reactionBestAvg',
+    key: 'reaction-test', label: 'SPEED TAP', genre: 'REFLEX',
     format: (v) => (v ? `${v}ms` : '—'), color: '#06D6A0', diff: 1,
-    art: () => (
-      <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%'}}>
-        <div style={{fontSize:40,animation:'boltPulse 1s ease-in-out infinite',filter:'drop-shadow(0 0 12px #06D6A0)'}}>⚡</div>
-      </div>
-    ),
+    art: () => <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%'}}><div style={{fontSize:40,filter:'drop-shadow(0 0 12px #06D6A0)'}}>⚡</div></div>,
   },
   {
-    key: 'desi', label: 'DESI QUIZ', genre: 'TRIVIA', statKey: 'desiQuizHighScore',
-    format: (v) => `${v || 0}/10`, color: '#FFB703', diff: 2,
-    art: () => (
-      <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%'}}>
-        <div style={{fontSize:36,animation:'reelSpin 3s linear infinite',filter:'drop-shadow(0 0 10px #FFB703)'}}>🎬</div>
-        <div style={{position:'absolute',fontFamily:'monospace',fontSize:8,color:'#FFB703',bottom:6,letterSpacing:2,opacity:0.7}}>FILMY QUIZ</div>
-      </div>
-    ),
+    key: 'snake', label: 'NEON SNAKE', genre: 'ARCADE',
+    format: (v) => v || 0, color: '#00F5FF', diff: 2, isNew: true,
+    art: () => <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%'}}><div style={{fontSize:40,filter:'drop-shadow(0 0 12px #00F5FF)'}}>🐍</div></div>,
   },
   {
-    key: 'ttt', label: 'TIC TAC TOE', genre: 'STRATEGY', statKey: 'tttWins',
-    format: (v) => `${v || 0} wins`, color: '#FF006E', diff: 2,
-    art: () => (
-      <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',gap:2}}>
-        <svg width="60" height="60" viewBox="0 0 60 60">
-          <line x1="20" y1="5" x2="20" y2="55" stroke="#252535" strokeWidth="2"/>
-          <line x1="40" y1="5" x2="40" y2="55" stroke="#252535" strokeWidth="2"/>
-          <line x1="5" y1="20" x2="55" y2="20" stroke="#252535" strokeWidth="2"/>
-          <line x1="5" y1="40" x2="55" y2="40" stroke="#252535" strokeWidth="2"/>
-          <text x="10" y="18" fill="#00F5FF" fontSize="12" fontWeight="bold" style={{filter:'drop-shadow(0 0 4px #00F5FF)'}}>✕</text>
-          <circle cx="50" cy="12" r="6" fill="none" stroke="#FF006E" strokeWidth="2" style={{filter:'drop-shadow(0 0 4px #FF006E)'}}/>
-          <text x="10" y="38" fill="#FF006E" fontSize="12" fontWeight="bold">○</text>
-          <text x="44" y="55" fill="#00F5FF" fontSize="12" fontWeight="bold" style={{filter:'drop-shadow(0 0 4px #00F5FF)'}}>✕</text>
-        </svg>
-      </div>
-    ),
+    key: '2048', label: '2048', genre: 'PUZZLE',
+    format: (v) => v || 0, color: '#FFB703', diff: 2,
+    art: () => <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%'}}><div style={{fontSize:40,filter:'drop-shadow(0 0 12px #FFB703)'}}>🔢</div></div>,
   },
   {
-    key: 'car', label: 'CAR RACER', genre: 'ARCADE', statKey: 'carRacerHighScore',
-    format: (v) => v || 0, color: '#F97316', diff: 2, isNew: true,
-    art: () => (
-      <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',overflow:'hidden',position:'relative'}}>
-        <div style={{fontSize:32,animation:'carDrive 1.5s linear infinite',filter:'drop-shadow(0 0 8px #F97316)'}}>🏎️</div>
-        {[...Array(4)].map((_,i)=>(
-          <div key={i} style={{position:'absolute',right:0,top:`${20+i*15}%`,width:`${20+Math.random()*30}%`,height:1,background:`rgba(249,115,22,${0.2+i*0.1})`,animation:`speedLine ${0.4+i*0.1}s linear ${i*0.1}s infinite`}}/>
-        ))}
-      </div>
-    ),
+    key: 'simon-says', label: 'SIMON SAYS', genre: 'MEMORY',
+    format: (v) => v || 0, color: '#FF006E', diff: 2, isNew: true,
+    art: () => <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%'}}><div style={{fontSize:40,filter:'drop-shadow(0 0 12px #FF006E)'}}>🧠</div></div>,
   },
   {
-    key: 'space', label: 'SPACE SHOOTER', genre: 'SHMUP', statKey: 'spaceShooterHighScore',
-    format: (v) => v || 0, color: '#8B5CF6', diff: 3, isNew: true,
-    art: () => (
-      <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',position:'relative'}}>
-        <div style={{fontSize:32,animation:'rocketFloat 2s ease-in-out infinite',filter:'drop-shadow(0 0 10px #8B5CF6)'}}>🚀</div>
-        {[...Array(6)].map((_,i)=>(
-          <div key={i} style={{position:'absolute',width:2,height:2,borderRadius:'50%',background:'#fff',top:`${Math.random()*100}%`,left:`${Math.random()*100}%`,animation:`starTwinkle ${1+Math.random()}s ease-in-out ${Math.random()}s infinite alternate`,opacity:0.6}}/>
-        ))}
-        <div style={{position:'absolute',bottom:4,fontFamily:'monospace',fontSize:8,color:'rgba(139,92,246,0.7)',letterSpacing:1}}>🔥 ENGINE</div>
-      </div>
-    ),
+    key: 'whack-a-mole', label: 'WHACK-A-MOLE', genre: 'ACTION',
+    format: (v) => v || 0, color: '#F97316', diff: 1, isNew: true,
+    art: () => <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%'}}><div style={{fontSize:40,filter:'drop-shadow(0 0 12px #F97316)'}}>🔨</div></div>,
+  },
+  {
+    key: 'type-racer', label: 'TYPE RACER', genre: 'TYPING',
+    format: (v) => v ? `${v} WPM` : '0 WPM', color: '#8B5CF6', diff: 3, isNew: true,
+    art: () => <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%'}}><div style={{fontSize:40,filter:'drop-shadow(0 0 12px #8B5CF6)'}}>⌨️</div></div>,
+  },
+  {
+    key: 'wordle', label: 'WORDLE', genre: 'WORD',
+    format: (v) => `${v || 0} wins`, color: '#06D6A0', diff: 2, isNew: true,
+    art: () => <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%'}}><div style={{fontSize:40,filter:'drop-shadow(0 0 12px #06D6A0)'}}>📝</div></div>,
+  },
+  {
+    key: 'flappy-bird', label: 'FLAPPY BIRD', genre: 'ARCADE',
+    format: (v) => v || 0, color: '#FFB703', diff: 3, isNew: true,
+    art: () => <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%'}}><div style={{fontSize:40,filter:'drop-shadow(0 0 12px #FFB703)'}}>🐦</div></div>,
+  },
+  {
+    key: 'tic-tac-toe', label: 'TIC TAC TOE', genre: 'STRATEGY',
+    format: (v) => `${v || 0} wins`, color: '#FF006E', diff: 1,
+    art: () => <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%'}}><div style={{fontSize:40,filter:'drop-shadow(0 0 12px #FF006E)'}}>❌</div></div>,
+  },
+  {
+    key: 'cryptogram', label: 'CRYPTOGRAM', genre: 'PUZZLE',
+    format: (v) => `${v || 0} solved`, color: '#00F5FF', diff: 3, isNew: true,
+    art: () => <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%'}}><div style={{fontSize:40,filter:'drop-shadow(0 0 12px #00F5FF)'}}>🔐</div></div>,
   },
 ];
 
 const GAME_COMPONENTS = {
-  '2048': Game2048, ttt: TicTacToe, desi: DesiQuiz,
-  reaction: ReactionTest, car: CarRacer, space: SpaceShooter,
+  '2048': Game2048, 'tic-tac-toe': TicTacToe, 'reaction-test': ReactionTest,
+  'snake': Snake, 'simon-says': SimonSays, 'whack-a-mole': WhackAMole,
+  'type-racer': TypeRacer, 'wordle': Wordle, 'flappy-bird': FlappyBird, 'cryptogram': Cryptogram,
 };
 
 // ─── Leaderboard ─────────────────────────────────────────────────
@@ -117,7 +99,7 @@ function Leaderboard({ currentGame }) {
   const load = useCallback(async (g) => {
     setLoading(true);
     try {
-      const { data: d } = await api.get(`/games/leaderboard?game=${g}`);
+      const { data: d } = await api.get(`/games/leaderboard?gameId=${g}`);
       setData(d);
     } catch { setData(null); }
     setLoading(false);
@@ -165,7 +147,7 @@ function Leaderboard({ currentGame }) {
             const gameColor = GAMES.find(g=>g.key===game)?.color||'#00F5FF';
             const isTop3 = i < 3;
             const initials = (entry.displayName||entry.username||'?').slice(0,2).toUpperCase();
-            const formatScore = game==='reaction' ? `${entry.score}ms` : entry.score;
+            const formatScore = game==='reaction-test' ? `${entry.score}ms` : entry.score;
             return (
               <div
                 key={i}
@@ -397,7 +379,7 @@ export default function GamesPage() {
                   <GameCard
                     key={game.key}
                     game={game}
-                    stat={game.format(stats[game.statKey])}
+                    stat={game.format(stats[game.key])}
                     onClick={() => { hapticTap(8); setActiveGame(game.key); }}
                   />
                 ))}

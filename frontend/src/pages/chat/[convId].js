@@ -14,6 +14,8 @@ const MessageBubble = dynamic(() => import('../../components/chat/MessageBubble'
   loading: () => <div style={{ height: 60 }} />
 });
 
+const MemeEditor = dynamic(() => import('../../components/meme/MemeEditor'), { ssr: false });
+
 const GifPanel = dynamic(() => import('../../components/meme/GifPanel'), {
   ssr: false,
   loading: () => <div style={{ height: '65vh', background: '#0D0D14' }} />
@@ -21,6 +23,12 @@ const GifPanel = dynamic(() => import('../../components/meme/GifPanel'), {
 
 const buildConvId = (a, b) => [a, b].sort().join('_');
 const MESSAGE_MAX_LENGTH = 2000;
+
+const LOCAL_MEMES = [
+  ...['mahesh-babu-pointing', 'allu-arjun-pushpa', 'pawan-kalyan-serious', 'ntr-angry', 'brahmanandam-reaction', 'venkatesh-surprised'].map(n => ({ _id: n, name: n.replace(/-/g, ' ').toUpperCase(), url: `/memes/${n}.svg`, category: 'Telugu', isTemplate: true })),
+  ...['srk-arms-open', 'ranveer-screaming', 'akshay-salute', 'amitabh-pointing'].map(n => ({ _id: n, name: n.replace(/-/g, ' ').toUpperCase(), url: `/memes/${n}.svg`, category: 'Hindi', isTemplate: true })),
+  ...['drake-approve', 'distracted-boyfriend', 'this-is-fine', 'surprised-pikachu', 'two-buttons', 'gru-plan', 'stonks', 'brain-expanding', 'panik-kalm', 'gigachad'].map(n => ({ _id: n, name: n.replace(/-/g, ' ').toUpperCase(), url: `/memes/${n}.svg`, category: 'Internet', isTemplate: true }))
+];
 
 export const getServerSideProps = async () => ({ props: {} });
 
@@ -38,6 +46,8 @@ export default function ChatPage() {
   const [hasMore, setHasMore] = useState(false);
   const [replyTo, setReplyTo] = useState(null);
   const [showMemePanel, setShowMemePanel] = useState(false);
+  const [editorTemplate, setEditorTemplate] = useState(null);
+  const [suggestedMemes, setSuggestedMemes] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [friendTyping, setFriendTyping] = useState(false);
   const [friendStatus, setFriendStatus] = useState('offline');
@@ -239,7 +249,18 @@ export default function ChatPage() {
   }, [convId, friendId, user, sendMessage, toast]);
 
   const handleInputChange = (e) => {
-    setInput(e.target.value);
+    const val = e.target.value;
+    setInput(val);
+    
+    // Auto-search memes
+    if (val.length > 2) {
+      const q = val.toLowerCase();
+      const suggestions = LOCAL_MEMES.filter(m => m.name.toLowerCase().includes(q) || m.category.toLowerCase().includes(q)).slice(0, 10);
+      setSuggestedMemes(suggestions);
+    } else {
+      setSuggestedMemes([]);
+    }
+
     const now = Date.now();
     if (!isTyping) {
       setIsTyping(true);
@@ -309,6 +330,19 @@ export default function ChatPage() {
         <div className="flex gap-1"><span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" /></div>
         <span className="font-mono text-xs mt-3" style={{ color: '#6B6B8A' }}>ESTABLISHING CHANNEL...</span>
       </div>
+    );
+  }
+
+  if (editorTemplate) {
+    return (
+      <MemeEditor
+        template={editorTemplate}
+        onCancel={() => setEditorTemplate(null)}
+        onSend={(base64, name) => {
+          setEditorTemplate(null);
+          handleSendGif({ url: base64, title: name, preview: base64 });
+        }}
+      />
     );
   }
 
@@ -496,6 +530,21 @@ export default function ChatPage() {
               <p className="text-xs truncate mt-0.5" style={{ color: '#6B6B8A' }}>{replyTo.content}</p>
             </div>
             <button onClick={() => setReplyTo(null)} style={{ color: '#6B6B8A', fontSize: 16 }}>✕</button>
+          </div>
+        )}
+
+        {/* Meme suggestions */}
+        {suggestedMemes.length > 0 && (
+          <div className="flex gap-2 px-3 py-2 overflow-x-auto bg-[#12121A] border-b border-[#252535]" style={{ scrollbarWidth: 'none' }}>
+            {suggestedMemes.map(meme => (
+              <button
+                key={meme._id}
+                onClick={() => { setSuggestedMemes([]); setEditorTemplate(meme); }}
+                className="flex-shrink-0 relative w-16 h-16 rounded-md overflow-hidden border border-[#252535] bg-[#0A0A0F]"
+              >
+                <img src={meme.url} alt={meme.name} className="w-full h-full object-cover opacity-70 hover:opacity-100 transition-opacity" />
+              </button>
+            ))}
           </div>
         )}
 

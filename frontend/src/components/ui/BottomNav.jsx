@@ -93,6 +93,9 @@ const BottomNav = () => {
             >
               <div className="relative">
                 {icon(active)}
+                {active && (
+                  <div className="absolute inset-0 rounded-full animate-glow-pulse" style={{ background: 'rgba(0,245,255,0.2)', filter: 'blur(8px)', zIndex: -1 }} />
+                )}
                 {isComms && unread > 0 && (
                   <span className="unread-badge absolute -top-2 -right-2">{unread > 9 ? '9+' : unread}</span>
                 )}
@@ -111,7 +114,7 @@ const BottomNav = () => {
               >
                 {label}
               </span>
-              {active && <span className="nav-active-dot" />}
+              {active && <span className="nav-active-dot animate-glow-pulse" style={{ width: 4, height: 4, borderRadius: '50%', background: '#00F5FF', marginTop: 2, boxShadow: '0 0 8px #00F5FF' }} />}
             </Link>
           );
         })}
