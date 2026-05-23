@@ -1,4 +1,4 @@
-import { useState, memo, useRef, useCallback } from 'react';
+import { useState, memo, useRef, useCallback, useMemo } from 'react';
 import Avatar from '../ui/Avatar';
 import MemeImage from '../ui/MemeImage';
 import { saveGalleryPhoto } from '../../utils/galleryStorage';
@@ -22,10 +22,13 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
   const isBase64Meme = message.type === 'meme' && message.content?.startsWith?.('data:image');
   const isGif = message.type === 'gif';
   const [gifLoaded, setGifLoaded] = useState(false);
-  const reactionCounts = {};
-  message.reactions?.forEach((r) => {
-    reactionCounts[r.emoji] = r.users.length;
-  });
+  const reactionCounts = useMemo(() => {
+    const counts = {};
+    message.reactions?.forEach((r) => {
+      counts[r.emoji] = r.users.length;
+    });
+    return counts;
+  }, [message.reactions]);
 
   const handleLongPress = useCallback(() => {
     if (!isDeleted) {
@@ -43,7 +46,7 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
     if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
   }, []);
 
-  const handleDownload = () => {
+  const handleDownload = useCallback(() => {
     if (!isBase64Meme) return;
     const link = document.createElement('a');
     link.href = message.content;
@@ -51,14 +54,14 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
     link.click();
     setShowDownload(false);
     setShowActions(false);
-  };
+  }, [isBase64Meme, message.content]);
 
-  const handleSaveGallery = () => {
+  const handleSaveGallery = useCallback(() => {
     if (!isBase64Meme) return;
     saveGalleryPhoto(message.content, message.memeData?.name || '');
     setShowDownload(false);
     setShowActions(false);
-  };
+  }, [isBase64Meme, message.content, message.memeData]);
 
   return (
     <div

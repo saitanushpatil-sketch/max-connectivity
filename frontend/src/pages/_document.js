@@ -12,6 +12,7 @@ export default function Document() {
         <link rel="manifest" href="/manifest.json" />
         <link rel="prefetch" href="/chats" />
         <link rel="prefetch" href="/chat" />
+        <link rel="preconnect" href="https://max-connectivity1.onrender.com" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import Avatar from '../components/ui/Avatar';
 import BottomNav from '../components/ui/BottomNav';
 import api from '../utils/api';
@@ -7,7 +7,7 @@ import useAuthStore from '../context/authStore';
 export const dynamic = 'force-dynamic';
 export const getServerSideProps = async () => ({ props: {} });
 
-export default function Search() {
+const Search = () => {
   const { user } = useAuthStore();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -51,7 +51,7 @@ export default function Search() {
     return () => clearTimeout(t);
   }, [query, search]);
 
-  const addFriend = async (userId) => {
+  const addFriend = useCallback(async (userId) => {
     setActioning((a) => ({ ...a, [userId]: true }));
     try {
       await api.post('/friends/request', { userId });
@@ -61,14 +61,14 @@ export default function Search() {
       }));
     } catch (_) {}
     setActioning((a) => ({ ...a, [userId]: false }));
-  };
+  }, []);
 
-  const getStatus = (uid) => {
+  const getStatus = useCallback((uid) => {
     if (friends.includes(uid)) return 'friends';
     if (pending.outgoing.some(o => o.receiverId === uid)) return 'pending';
     if (pending.incoming.includes(uid)) return 'incoming';
     return 'none';
-  };
+  }, [friends, pending]);
 
   return (
     <div className="flex flex-col h-full pb-16">
@@ -147,3 +147,5 @@ export default function Search() {
     </div>
   );
 }
+
+export default memo(Search);

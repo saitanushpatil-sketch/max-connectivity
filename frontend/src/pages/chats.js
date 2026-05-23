@@ -34,6 +34,7 @@ function Chats() {
   const [unreadCounts, setUnreadCounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
+  const [visibleRange, setVisibleRange] = useState({ start: 0, end: 20 });
   const { unreadCount, initNotifications } = useNotificationStore();
 
   useEffect(() => {
@@ -142,7 +143,13 @@ function Chats() {
         />
       )}
 
-      <PullToRefresh onRefresh={fetchFriends} className="flex-1">
+      <div className="flex-1 overflow-y-auto" onScroll={(e) => {
+          const { scrollTop, clientHeight } = e.target;
+          const start = Math.max(0, Math.floor(scrollTop / 70) - 5);
+          const end = Math.min(friendList.length, Math.ceil((scrollTop + clientHeight) / 70) + 5);
+          setVisibleRange({ start, end });
+      }}>
+      <PullToRefresh onRefresh={fetchFriends}>
         {loading ? (
           <>
             {[0, 1, 2, 3, 4].map((i) => (
@@ -163,7 +170,8 @@ function Chats() {
             </Link>
           </div>
         ) : (
-          friendList.map(({ friend, convId, last, unread }) => (
+          <div style={{ paddingTop: visibleRange.start * 70, paddingBottom: (friendList.length - visibleRange.end) * 70 }}>
+          {friendList.slice(visibleRange.start, visibleRange.end).map(({ friend, convId, last, unread }) => (
               <Link
                 key={friend._id}
                 href={`/chat/${convId}`}
@@ -196,9 +204,11 @@ function Chats() {
                   </div>
                 </div>
               </Link>
-          ))
+          ))}
+          </div>
         )}
       </PullToRefresh>
+      </div>
       <BottomNav />
     </div>
   );

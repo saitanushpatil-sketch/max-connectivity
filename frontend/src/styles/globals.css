@@ -458,6 +458,7 @@ a:active {
 .nav-link-active {
   transform: translateY(-2px);
   transition: transform 0.1s ease, color 0.1s ease;
+  will-change: transform;
 }
 
 .nav-link-active svg {

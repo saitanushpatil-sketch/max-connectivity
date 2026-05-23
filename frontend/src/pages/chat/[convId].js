@@ -467,6 +467,7 @@ export default function ChatPage() {
             <span className="font-mono text-xs" style={{ color: '#6B6B8A' }}>CHANNEL SECURE — SEND FIRST MESSAGE</span>
           </div>
         )}
+        <div style={{ paddingTop: visibleRange.start * 80, paddingBottom: (messages.length - visibleRange.end) * 80 }}>
         {messages.slice(visibleRange.start, visibleRange.end).map((msg) => (
           <MessageBubble
             key={msg._id}
@@ -478,6 +479,7 @@ export default function ChatPage() {
             currentUserId={user._id}
           />
         ))}
+        </div>
         {/* Typing indicator */}
         {friendTyping && (
           <div className="flex items-center gap-2 mb-2 animate-fade-in">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Avatar from '../components/ui/Avatar';
 import BottomNav from '../components/ui/BottomNav';
@@ -13,7 +13,7 @@ const buildConvId = (a, b) => [a, b].sort().join('_');
 
 export const getServerSideProps = async () => ({ props: {} });
 
-export default function Friends() {
+const Friends = () => {
   const { user } = useAuthStore();
   const router = useRouter();
   const [tab, setTab] = useState('friends');
@@ -117,6 +117,13 @@ export default function Friends() {
                     MSG
                   </button>
                   <button
+                    onClick={() => { hapticTap(10); router.push(`/call/${f._id}?type=voice`); }}
+                    className="hud-btn px-2 py-1.5 rounded-sm text-[10px]"
+                    style={{ background: 'rgba(0,245,255,0.1)', border: '1px solid rgba(0,245,255,0.35)', color: '#00F5FF' }}
+                  >
+                    📞
+                  </button>
+                  <button
                     onClick={() => { hapticTap(10); router.push(`/call/${f._id}?type=video`); }}
                     className="hud-btn px-2 py-1.5 rounded-sm text-[10px]"
                     style={{ background: 'rgba(0,245,255,0.1)', border: '1px solid rgba(0,245,255,0.35)', color: '#00F5FF' }}
@@ -189,3 +196,5 @@ export default function Friends() {
     </div>
   );
 }
+
+export default memo(Friends);
