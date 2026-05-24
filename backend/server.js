@@ -12,31 +12,13 @@ const friendRoutes = require('./routes/friends');
 const messageRoutes = require('./routes/messages');
 const memeRoutes = require('./routes/memes');
 const pushRoutes = require('./routes/push');
-const gameRoutes = require('./routes/games');
-const gifRoutes = require('./routes/gifs');
-const { configureWebPush } = require('./utils/pushService');
 
 const app = express();
 const server = http.createServer(app);
 
-const allowedOrigins = [
-  process.env.CLIENT_URL,
-  'https://frontend-mu-gules-75.vercel.app',
-  'https://max-connectivity.vercel.app',
-  /https:\/\/.*\.vercel\.app$/,
-  'capacitor://localhost',
-  'http://localhost',
-  'ionic://localhost',
-];
-
 const corsOptions = {
-  origin: function(origin, callback) {
-    if (!origin) return callback(null, true);
-    const allowed = allowedOrigins.some(o =>
-      o instanceof RegExp ? o.test(origin) : o === origin
-    );
-    if (allowed) callback(null, true);
-    else callback(new Error('Not allowed by CORS'));
+  origin: function (origin, callback) {
+    return callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -48,7 +30,10 @@ app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-app.get('/health', (req, res) => res.status(200).json({ status: 'MAX Connectivity API running', port: process.env.PORT }));
+app.get('/health', (req, res) => res.json({ 
+  status: 'MAX Connectivity API running', 
+  port: process.env.PORT 
+}));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -56,13 +41,10 @@ app.use('/api/friends', friendRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/memes', memeRoutes);
 app.use('/api/push', pushRoutes);
-app.use('/api/games', gameRoutes);
-app.use('/api/gifs', gifRoutes);
-
-configureWebPush();
 
 app.use((req, res) => res.status(404).json({ error: 'Route not found' }));
 app.use((err, req, res, next) => {
+  console.error(err.stack);
   res.status(500).json({ error: err.message || 'Internal server error' });
 });
 
@@ -74,19 +56,19 @@ const io = new Server(server, {
 initSocket(io);
 
 connectDB().then(() => {
-  const PORT = process.env.PORT || 8080;
+  const PORT = process.env.PORT || 5000;
   server.listen(PORT, '0.0.0.0', () => {
-    // Server started
+    console.log(`🚀 MAX Connectivity server running on port ${PORT}`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   });
+
+  if (process.env.NODE_ENV === 'production') {
+    setInterval(() => {
+      fetch('https://max-connectivity1.onrender.com/health')
+        .catch(() => {});
+    }, 14 * 60 * 1000);
+  }
 }).catch(err => {
+  console.error('❌ Failed to connect to DB:', err);
   process.exit(1);
 });
-
-// Keep alive ping every 14 minutes
-if (process.env.NODE_ENV === 'production') {
-  setInterval(async () => {
-    try {
-      await fetch(`${process.env.CLIENT_URL || 'https://max-connectivity1.onrender.com'}/health`)
-    } catch (e) {}
-  }, 14 * 60 * 1000)
-}
