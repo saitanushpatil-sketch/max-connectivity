@@ -23,7 +23,10 @@ const allowedOrigins = [
   process.env.CLIENT_URL,
   'https://frontend-mu-gules-75.vercel.app',
   'https://max-connectivity.vercel.app',
-  /https:\/\/.*\.vercel\.app$/
+  /https:\/\/.*\.vercel\.app$/,
+  'capacitor://localhost',
+  'http://localhost',
+  'ionic://localhost',
 ];
 
 const corsOptions = {
