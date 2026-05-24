@@ -48,7 +48,7 @@ app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-app.get('/health', (req, res) => res.json({ status: 'MAX Connectivity API running', port: process.env.PORT }));
+app.get('/health', (req, res) => res.status(200).json({ status: 'MAX Connectivity API running', port: process.env.PORT }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -81,3 +81,12 @@ connectDB().then(() => {
 }).catch(err => {
   process.exit(1);
 });
+
+// Keep alive ping every 14 minutes
+if (process.env.NODE_ENV === 'production') {
+  setInterval(async () => {
+    try {
+      await fetch(`${process.env.CLIENT_URL || 'https://max-connectivity1.onrender.com'}/health`)
+    } catch (e) {}
+  }, 14 * 60 * 1000)
+}
