@@ -11,7 +11,7 @@ import useAuthStore from '../context/authStore';
 
 const buildConvId = (a, b) => [a, b].sort().join('_');
 
-export const getServerSideProps = async () => ({ props: {} });
+
 
 const Friends = () => {
   const { user } = useAuthStore();

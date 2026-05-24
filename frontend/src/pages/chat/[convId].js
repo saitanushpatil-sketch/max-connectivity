@@ -30,7 +30,7 @@ const LOCAL_MEMES = [
   ...['drake-approve', 'distracted-boyfriend', 'this-is-fine', 'surprised-pikachu', 'two-buttons', 'gru-plan', 'stonks', 'brain-expanding', 'panik-kalm', 'gigachad'].map(n => ({ _id: n, name: n.replace(/-/g, ' ').toUpperCase(), url: `/memes/${n}.svg`, category: 'Internet', isTemplate: true }))
 ];
 
-export const getServerSideProps = async () => ({ props: {} });
+
 
 export default function ChatPage() {
   const router = useRouter();
@@ -39,7 +39,6 @@ export default function ChatPage() {
 
   const [friend, setFriend] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [page, setPage] = useState(1);
@@ -48,6 +47,7 @@ export default function ChatPage() {
   const [showMemePanel, setShowMemePanel] = useState(false);
   const [editorTemplate, setEditorTemplate] = useState(null);
   const [suggestedMemes, setSuggestedMemes] = useState([]);
+  const [imgflipMemes, setImgflipMemes] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [friendTyping, setFriendTyping] = useState(false);
   const [friendStatus, setFriendStatus] = useState('offline');
@@ -93,6 +93,19 @@ export default function ChatPage() {
     if (!convId || !user) return;
     fetchFriend(friendId);
     fetchMessages(1);
+    // Fetch Imgflip templates
+    fetch('https://api.imgflip.com/get_memes')
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) setImgflipMemes(d.data.memes.map(m => ({
+          _id: m.id,
+          name: m.name.toUpperCase(),
+          url: m.url,
+          category: 'Imgflip',
+          isTemplate: true
+        })));
+      })
+      .catch(() => {});
   }, [convId, user]);
 
   const { joinConversation, sendMessage, emitTypingStart, emitTypingStop, reactMessage, markRead } = useSocket({
@@ -158,10 +171,11 @@ export default function ChatPage() {
   }, [showE2ETooltip]);
 
   const handleSendText = useCallback(async () => {
-    if (!input.trim() || sending) return;
-    const content = input.trim();
+    const val = inputRef.current?.value || '';
+    if (!val.trim() || sending) return;
+    const content = val.trim();
     hapticTap(10);
-    setInput('');
+    if (inputRef.current) inputRef.current.value = '';
     setReplyTo(null);
     setShowMemePanel(false);
     setSending(true);
@@ -181,7 +195,7 @@ export default function ChatPage() {
       _optimistic: true,
     };
     setMessages((prev) => [...prev, tempMsg]);
-    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 30);
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'instant' }), 10);
 
     try {
       const response = await sendMessage({
@@ -196,12 +210,12 @@ export default function ChatPage() {
       );
     } catch {
       setMessages((prev) => prev.filter((m) => m._id !== tempMsg._id));
-      setInput(content);
+      if (inputRef.current) inputRef.current.value = content;
       toast.error('Failed to send message');
     } finally {
       setSending(false);
     }
-  }, [input, sending, convId, friendId, user, replyTo, sendMessage, emitTypingStop, toast]);
+  }, [sending, convId, friendId, user, replyTo, sendMessage, emitTypingStop, toast]);
 
   const handleSendGif = useCallback(async (item) => {
     setShowMemePanel(false);
@@ -227,7 +241,7 @@ export default function ChatPage() {
       _optimistic: true,
     };
     setMessages((prev) => [...prev, tempMsg]);
-    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 30);
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'instant' }), 10);
 
     try {
       const response = await sendMessage({
@@ -250,12 +264,12 @@ export default function ChatPage() {
 
   const handleInputChange = (e) => {
     const val = e.target.value;
-    setInput(val);
     
     // Auto-search memes
     if (val.length > 2) {
       const q = val.toLowerCase();
-      const suggestions = LOCAL_MEMES.filter(m => m.name.toLowerCase().includes(q) || m.category.toLowerCase().includes(q)).slice(0, 10);
+      const allMemes = [...LOCAL_MEMES, ...imgflipMemes];
+      const suggestions = allMemes.filter(m => m.name.toLowerCase().includes(q) || m.category.toLowerCase().includes(q)).slice(0, 10);
       setSuggestedMemes(suggestions);
     } else {
       setSuggestedMemes([]);
@@ -264,7 +278,8 @@ export default function ChatPage() {
     const now = Date.now();
     if (!isTyping) {
       setIsTyping(true);
-      emitTypingStart(convId, friendId);
+      // Fallback to regular emit if volatile isn't exposed through the hook cleanly
+      emitTypingStart(convId, friendId); 
       lastTypingEmitRef.current = now;
     } else if (now - lastTypingEmitRef.current >= 500) {
       emitTypingStart(convId, friendId);
@@ -570,35 +585,27 @@ export default function ChatPage() {
               ref={inputRef}
               className="hud-input w-full px-3 py-2.5 rounded-sm text-sm"
               placeholder="TRANSMIT MESSAGE..."
-              value={input}
+              defaultValue=""
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               maxLength={MESSAGE_MAX_LENGTH}
               style={{ fontSize: 14 }}
             />
-            <div className="flex justify-end mt-1 px-1">
-              <span
-                className="font-mono text-[10px] tracking-widest"
-                style={{ color: input.length >= MESSAGE_MAX_LENGTH ? '#FF006E' : '#6B6B8A' }}
-              >
-                {input.length}/{MESSAGE_MAX_LENGTH}
-              </span>
-            </div>
           </div>
 
           {/* Send button */}
           <button
             onClick={handleSendText}
-            disabled={!input.trim() || sending}
+            disabled={sending}
             className="w-9 h-9 flex items-center justify-center rounded-sm flex-shrink-0 transition-all"
             style={{
-              background: input.trim() ? 'linear-gradient(135deg, #00F5FF, #0099CC)' : '#1A1A26',
-              border: `1px solid ${input.trim() ? '#00F5FF' : '#252535'}`,
-              boxShadow: input.trim() ? '0 0 12px rgba(0,245,255,0.3)' : 'none',
+              background: 'linear-gradient(135deg, #00F5FF, #0099CC)',
+              border: `1px solid #00F5FF`,
+              boxShadow: '0 0 12px rgba(0,245,255,0.3)',
               opacity: sending ? 0.7 : 1,
             }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={input.trim() ? '#0A0A0F' : '#6B6B8A'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0A0A0F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
             </svg>
           </button>

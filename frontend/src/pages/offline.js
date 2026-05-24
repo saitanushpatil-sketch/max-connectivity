@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-export const getServerSideProps = async () => ({ props: {} });
+
 
 export default function Offline() {
   return (

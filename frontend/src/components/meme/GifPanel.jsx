@@ -1,44 +1,48 @@
 import { useState, useEffect, useRef } from 'react';
-import api from '../../utils/api';
+
+const TENOR_KEY = 'AIzaSyAyimkuYQYF_FXVALexPzfiygou1omLPZQ';
 
 const PRESETS = [
-  { label: '🔥 Hot', q: '' },
-  { label: '😂 Funny', q: 'funny' },
-  { label: '💃 Dance', q: 'dance' },
-  { label: '🎬 Bollywood', q: 'bollywood' },
-  { label: '😎 Swag', q: 'swag attitude' },
-  { label: '❤️ Love', q: 'love' },
-  { label: '🤣 LOL', q: 'laughing' },
-  { label: '😤 Angry', q: 'angry' },
-  { label: '🎉 Party', q: 'celebration' },
-  { label: '👏 Clap', q: 'clapping' },
-  { label: '🙏 India', q: 'namaste india' },
-  { label: '🐱 Cute', q: 'cute' },
+  { label: '🔥 Trending', q: '' },
+  { label: '😲 Reactions', q: 'reaction' },
+  { label: '🎬 Telugu', q: 'telugu meme' },
+  { label: '🕺 Bollywood', q: 'bollywood' },
+  { label: '🎮 Gaming', q: 'gaming' },
+  { label: '🙏 Desi', q: 'desi' },
 ];
+
+const searchTenor = async (query, isSticker) => {
+  const endpoint = query 
+    ? `https://tenor.googleapis.com/v2/search?q=${query}` 
+    : `https://tenor.googleapis.com/v2/featured?`;
+    
+  const searchType = isSticker ? '&searchfilter=sticker' : '';
+
+  const res = await fetch(
+    `${endpoint}&key=${TENOR_KEY}&limit=20&media_filter=gif${searchType}`
+  );
+  const data = await res.json();
+  return data.results.map(r => ({
+    id: r.id,
+    url: r.media_formats.gif.url,
+    preview: r.media_formats.tinygif.url,
+    title: r.content_description,
+    isSticker
+  }));
+};
 
 export default function GifPanel({ onSelect, onClose }) {
   const [tab, setTab] = useState('gifs');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
-  const [offset, setOffset] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
   const timer = useRef(null);
-  const bottomRef = useRef(null);
 
-  const load = async (q, off, type, reset) => {
+  const load = async (q, type) => {
     setLoading(true);
     try {
-      const { data } = await api.get(
-        `/gifs/search?q=${encodeURIComponent(q)}&offset=${off}&limit=20&type=${type}` 
-      );
-      if (reset) {
-        setItems(data.items || []);
-      } else {
-        setItems(p => [...p, ...(data.items || [])]);
-      }
-      setOffset(data.next || off + 20);
-      setHasMore((data.items || []).length === 20);
+      const results = await searchTenor(q, type === 'stickers');
+      setItems(results);
     } catch {
       setItems([]);
     }
@@ -46,26 +50,15 @@ export default function GifPanel({ onSelect, onClose }) {
   };
 
   useEffect(() => {
-    load('', 0, tab, true);
+    load('', tab);
   }, [tab]);
 
   useEffect(() => {
     clearTimeout(timer.current);
     timer.current = setTimeout(() => {
-      load(query, 0, tab, true);
+      load(query, tab);
     }, 400);
   }, [query]);
-
-  useEffect(() => {
-    if (!bottomRef.current) return;
-    const obs = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting && !loading && hasMore) {
-        load(query, offset, tab, false);
-      }
-    });
-    obs.observe(bottomRef.current);
-    return () => obs.disconnect();
-  }, [loading, hasMore, offset, query, tab]);
 
   return (
     <div style={{
@@ -139,7 +132,7 @@ export default function GifPanel({ onSelect, onClose }) {
             <input
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder={`Search ${tab}...`}
+              placeholder={`Search Tenor...`}
               autoFocus
               style={{
                 flex: 1, background: 'none', border: 'none',
@@ -215,8 +208,7 @@ export default function GifPanel({ onSelect, onClose }) {
           ) : (
             <div style={{
               display: 'grid',
-              gridTemplateColumns: tab === 'stickers'
-                ? 'repeat(4, 1fr)' : 'repeat(2, 1fr)',
+              gridTemplateColumns: 'repeat(2, 1fr)',
               gap: 6,
             }}>
               {items.map(item => (
@@ -247,16 +239,6 @@ export default function GifPanel({ onSelect, onClose }) {
                   />
                 </button>
               ))}
-              <div ref={bottomRef} style={{ gridColumn: '1/-1', height: 20 }} />
-            </div>
-          )}
-          {loading && items.length > 0 && (
-            <div style={{
-              textAlign: 'center', padding: 12,
-              color: '#6B6B8A', fontSize: 11,
-              fontFamily: 'Share Tech Mono',
-            }}>
-              LOADING...
             </div>
           )}
         </div>

@@ -9,7 +9,7 @@ const CameraExperience = dynamic(() => import('../components/camera/CameraExperi
   </div>
 });
 
-export const getServerSideProps = async () => ({ props: {} });
+
 
 export default function CameraPage() {
   const router = useRouter();

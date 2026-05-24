@@ -14,7 +14,7 @@ const LOCAL_MEMES = [
   ...['drake-approve', 'distracted-boyfriend', 'this-is-fine', 'surprised-pikachu', 'two-buttons', 'gru-plan', 'stonks', 'brain-expanding', 'panik-kalm', 'gigachad'].map(n => ({ _id: n, name: n.replace(/-/g, ' ').toUpperCase(), url: `/memes/${n}.svg`, category: 'Internet', isTemplate: true }))
 ];
 
-export const getServerSideProps = async () => ({ props: {} });
+
 
 export default function MemesPage() {
   const router = useRouter();

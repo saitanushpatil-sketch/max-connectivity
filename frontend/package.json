@@ -6,12 +6,19 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "build:android": "next build && npx cap copy android && npx cap sync android",
+    "open:android": "npx cap open android"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.4",
+    "@capacitor/camera": "^6.0.0",
     "@capacitor/cli": "^8.3.4",
     "@capacitor/core": "^8.3.4",
+    "@capacitor/haptics": "^6.0.0",
+    "@capacitor/push-notifications": "^6.0.0",
+    "@capacitor/splash-screen": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0",
     "axios": "^1.6.2",
     "framer-motion": "^10.16.16",
     "next": "14.0.4",
@@ -19,6 +26,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "socket.io-client": "^4.6.2",
+    "swr": "^2.2.4",
     "zustand": "^4.4.7"
   },
   "devDependencies": {
@@ -27,6 +35,7 @@
     "eslint": "^8.56.0",
     "eslint-config-next": "14.0.4",
     "postcss": "^8.4.32",
-    "tailwindcss": "^3.4.0"
+    "tailwindcss": "^3.4.0",
+    "typescript": "^6.0.3"
   }
 }

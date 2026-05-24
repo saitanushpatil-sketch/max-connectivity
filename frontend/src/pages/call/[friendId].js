@@ -5,7 +5,7 @@ import { getSocket } from '../../hooks/useSocket';
 import { retrieveCallFromSession } from '../../context/callStore';
 import api from '../../utils/api';
 
-export const getServerSideProps = async () => ({ props: {} });
+
 
 export default function CallPage() {
   const router = useRouter();

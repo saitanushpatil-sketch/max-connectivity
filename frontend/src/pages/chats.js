@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import useSWR from 'swr';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import useAuthStore from '../context/authStore';
@@ -24,80 +25,93 @@ const timeAgo = (date) => {
   return `${Math.floor(h / 24)}d`;
 };
 
-export const getServerSideProps = async () => ({ props: {} });
+const fetchChats = async (user) => {
+  if (!user?._id) return [];
+  const { data } = await api.get('/friends');
+  const friends = data.friends || [];
+  
+  const chatsData = await Promise.all(
+    friends.map(async (friend) => {
+      const convId = buildConvId(user._id, friend._id);
+      try {
+        const msgRes = await api.get(`/messages/${convId}?page=1`);
+        const msgs = msgRes.data.messages || [];
+        const last = msgs.length > 0 ? msgs[msgs.length - 1] : null;
+        const unread = msgs.filter(
+          (m) => m.sender?._id !== user._id && !m.readBy?.includes(user._id)
+        ).length;
+        return { friend, convId, last, unread };
+      } catch (_) {
+        return { friend, convId, last: null, unread: 0 };
+      }
+    })
+  );
+  return chatsData;
+};
+
+
 
 function Chats() {
   const { user } = useAuthStore();
   const router = useRouter();
-  const [friends, setFriends] = useState([]);
-  const [lastMessages, setLastMessages] = useState({});
-  const [unreadCounts, setUnreadCounts] = useState({});
-  const [loading, setLoading] = useState(true);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 20 });
   const { unreadCount, initNotifications } = useNotificationStore();
+
+  const { data: initialChats, error, mutate } = useSWR(
+    user?._id ? 'chats_data' : null,
+    () => fetchChats(user),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 5000,
+    }
+  );
+
+  const loading = !initialChats && !error;
+  
+  const [liveUpdates, setLiveUpdates] = useState({});
 
   useEffect(() => {
     initNotifications();
   }, [initNotifications]);
 
-  const fetchFriends = useCallback(async () => {
-    if (!user?._id) return;
-    try {
-      const { data } = await api.get('/friends');
-      setFriends(data.friends || []);
-      // Fetch last message for each friend
-      for (const friend of data.friends || []) {
-        const convId = buildConvId(user._id, friend._id);
-        try {
-          const msgRes = await api.get(`/messages/${convId}?page=1`);
-          const msgs = msgRes.data.messages || [];
-          if (msgs.length > 0) {
-            const last = msgs[msgs.length - 1];
-            setLastMessages((prev) => ({ ...prev, [convId]: last }));
-            const unread = msgs.filter(
-              (m) => m.sender?._id !== user._id && !m.readBy?.includes(user._id)
-            ).length;
-            setUnreadCounts((prev) => ({ ...prev, [convId]: unread }));
-          }
-        } catch (_) {}
-      }
-    } catch (_) {}
-    setLoading(false);
-  }, [user?._id]);
-
-  useEffect(() => { fetchFriends(); }, [fetchFriends]);
-
   useSocket({
     onNewMessageNotification: ({ conversationId, message }) => {
-      setLastMessages((prev) => ({ ...prev, [conversationId]: message }));
-      setUnreadCounts((prev) => ({ ...prev, [conversationId]: (prev[conversationId] || 0) + 1 }));
+      setLiveUpdates((prev) => ({
+        ...prev,
+        [conversationId]: {
+          last: message,
+          unread: (prev[conversationId]?.unread || 0) + 1,
+        },
+      }));
     },
     onUserStatus: ({ userId, status }) => {
-      setFriends((prev) => prev.map((f) => f._id === userId ? { ...f, status } : f));
+      mutate((currentChats) => {
+        if (!currentChats) return currentChats;
+        return currentChats.map(c => c.friend._id === userId ? { ...c, friend: { ...c.friend, status } } : c);
+      }, false);
     },
   });
 
-  const sortedFriends = useMemo(() => {
-    if (!user?._id) return [];
-    return [...friends].sort((a, b) => {
-      const convA = buildConvId(user._id, a._id);
-      const convB = buildConvId(user._id, b._id);
-      const timeA = lastMessages[convA]?.createdAt ? new Date(lastMessages[convA].createdAt).getTime() : 0;
-      const timeB = lastMessages[convB]?.createdAt ? new Date(lastMessages[convB].createdAt).getTime() : 0;
+  const friendList = useMemo(() => {
+    if (!initialChats) return [];
+    
+    const merged = initialChats.map((chat) => {
+      const live = liveUpdates[chat.convId];
+      if (!live) return chat;
+      return {
+        ...chat,
+        last: live.last || chat.last,
+        unread: chat.unread + (live.unread || 0)
+      };
+    });
+
+    return merged.sort((a, b) => {
+      const timeA = a.last?.createdAt ? new Date(a.last.createdAt).getTime() : 0;
+      const timeB = b.last?.createdAt ? new Date(b.last.createdAt).getTime() : 0;
       return timeB - timeA;
     });
-  }, [friends, lastMessages, user?._id]);
-
-  const friendList = useMemo(() => {
-    if (!user?._id) return [];
-    return sortedFriends.map((friend) => {
-      const convId = buildConvId(user._id, friend._id);
-      const last = lastMessages[convId];
-      const unread = unreadCounts[convId] || 0;
-      return { friend, convId, last, unread };
-    });
-  }, [sortedFriends, lastMessages, unreadCounts, user?._id]);
+  }, [initialChats, liveUpdates]);
 
   const handleNavigate = useCallback((url) => {
     router.push(url);
@@ -149,7 +163,7 @@ function Chats() {
           const end = Math.min(friendList.length, Math.ceil((scrollTop + clientHeight) / 70) + 5);
           setVisibleRange({ start, end });
       }}>
-      <PullToRefresh onRefresh={fetchFriends}>
+      <PullToRefresh onRefresh={() => mutate()}>
         {loading ? (
           <>
             {[0, 1, 2, 3, 4].map((i) => (
