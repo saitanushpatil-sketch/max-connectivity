@@ -13,14 +13,12 @@ const PRESETS = [
 
 const searchTenor = async (query, isSticker) => {
   const endpoint = query 
-    ? `https://tenor.googleapis.com/v2/search?q=${query}` 
-    : `https://tenor.googleapis.com/v2/featured?`;
+    ? `https://tenor.googleapis.com/v2/search?q=${query}&key=AIzaSyAyimkuYQYF_FXVALexPzfiygou1omLPZQ&limit=20&media_filter=gif`
+    : `https://tenor.googleapis.com/v2/featured?key=AIzaSyAyimkuYQYF_FXVALexPzfiygou1omLPZQ&limit=20&media_filter=gif`;
     
-  const searchType = isSticker ? '&searchfilter=sticker' : '';
+  const finalEndpoint = isSticker ? `${endpoint}&searchfilter=sticker` : endpoint;
 
-  const res = await fetch(
-    `${endpoint}&key=${TENOR_KEY}&limit=20&media_filter=gif${searchType}`
-  );
+  const res = await fetch(finalEndpoint);
   const data = await res.json();
   return data.results.map(r => ({
     id: r.id,
@@ -57,7 +55,7 @@ export default function GifPanel({ onSelect, onClose }) {
     clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       load(query, tab);
-    }, 400);
+    }, 300);
   }, [query]);
 
   return (

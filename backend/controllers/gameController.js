@@ -22,6 +22,17 @@ exports.saveScore = async (req, res) => {
         { score, achievedAt: Date.now() },
         { upsert: true, new: true }
       );
+
+      // Save to user document
+      try {
+        await User.findByIdAndUpdate(
+          req.userId,
+          { $set: { [`gameStats.${gameId}`]: score } }
+        );
+      } catch (err) {
+        console.error('Failed to update User document with new score:', err);
+      }
+
       return res.json({ newHighScore: true, score });
     }
 

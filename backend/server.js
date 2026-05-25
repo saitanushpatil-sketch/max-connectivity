@@ -17,12 +17,12 @@ const app = express();
 const server = http.createServer(app);
 
 const corsOptions = {
-  origin: function (origin, callback) {
-    return callback(null, true);
+  origin: function(origin, callback) {
+    callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 };
 
 app.use(cors(corsOptions));
@@ -62,12 +62,13 @@ connectDB().then(() => {
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 
+  // Keep alive ping every 14 minutes
   if (process.env.NODE_ENV === 'production') {
     setInterval(() => {
       fetch('https://max-connectivity1.onrender.com/health')
-        .catch(() => {});
-    }, 14 * 60 * 1000);
-  }
+        .catch(() => {})
+    }, 14 * 60 * 1000)
+  };
 }).catch(err => {
   console.error('❌ Failed to connect to DB:', err);
   process.exit(1);

@@ -2,22 +2,18 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.max.connectivity',
-  appName: 'MAX Connectivity',
+  appName: 'MAX',
   webDir: 'out',
   server: {
     url: 'https://frontend-mu-gules-75.vercel.app',
-    cleartext: true
+    androidScheme: 'https',
+    cleartext: true,
+    allowNavigation: ['*']
   },
-  plugins: {
-    SplashScreen: {
-      launchShowDuration: 3000,
-      backgroundColor: '#0A0A0F',
-      androidSplashResourceName: 'splash',
-      showSpinner: false
-    },
-    PushNotifications: {
-      presentationOptions: ['badge', 'sound', 'alert']
-    }
+  android: {
+    allowMixedContent: true,
+    captureInput: true,
+    webContentsDebuggingEnabled: true
   }
 };
 

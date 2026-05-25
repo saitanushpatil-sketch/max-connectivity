@@ -262,7 +262,7 @@ export default function ChatPage() {
     }
   }, [convId, friendId, user, sendMessage, toast]);
 
-  const handleInputChange = (e) => {
+  const handleInputChange = useCallback((e) => {
     const val = e.target.value;
     
     // Auto-search memes
@@ -290,7 +290,7 @@ export default function ChatPage() {
       setIsTyping(false);
       emitTypingStop(convId, friendId);
     }, 2000);
-  };
+  }, [imgflipMemes, isTyping, convId, friendId, emitTypingStart, emitTypingStop]);
 
   const handleReact = useCallback((messageId, emoji) => {
     reactMessage(messageId, emoji, convId);
@@ -332,12 +332,12 @@ export default function ChatPage() {
     setShowScrollFab(false);
   }, []);
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendText();
     }
-  };
+  }, [handleSendText]);
 
   if (loading) {
     return (
@@ -559,7 +559,7 @@ export default function ChatPage() {
                 onClick={() => { setSuggestedMemes([]); setEditorTemplate(meme); }}
                 className="flex-shrink-0 relative w-16 h-16 rounded-md overflow-hidden border border-[#252535] bg-[#0A0A0F]"
               >
-                <img src={meme.url} alt={meme.name} className="w-full h-full object-cover opacity-70 hover:opacity-100 transition-opacity" />
+                <img src={meme.url} alt={meme.name} className="w-full h-full object-cover opacity-70 hover:opacity-100 transition-opacity" loading="lazy" />
               </button>
             ))}
           </div>

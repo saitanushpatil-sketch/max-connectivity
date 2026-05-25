@@ -49,6 +49,40 @@ const fetchChats = async (user) => {
   return chatsData;
 };
 
+const ChatListItem = memo(({ friend, convId, last, unread }) => (
+  <Link
+    href={`/chat/${convId}`}
+    className="flex items-center gap-3 px-4 py-3 holo-hover transition-colors"
+    style={{ borderBottom: '1px solid #1A1A26' }}
+  >
+    <Avatar user={friend} size={46} showStatus />
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center justify-between">
+        <span className="font-heading font-semibold truncate" style={{ color: unread > 0 ? '#E8E8FF' : '#B0B0C8' }}>
+          {friend.displayName || friend.username}
+        </span>
+        <span className="font-mono text-[10px] ml-2 flex-shrink-0" style={{ color: '#6B6B8A' }}>
+          {last ? timeAgo(last.createdAt) : ''}
+        </span>
+      </div>
+      <div className="flex items-center justify-between mt-0.5">
+        <span className="font-body text-xs truncate" style={{ color: '#6B6B8A', maxWidth: '80%' }}>
+          {last
+            ? last.deletedForEveryone
+              ? '⊘ Message deleted'
+              : last.type === 'meme'
+              ? `🎭 ${last.content?.startsWith?.('data:image') ? 'Custom meme' : last.memeData?.name || 'Meme'}`
+              : last.content
+            : `@${friend.username}`}
+        </span>
+        {unread > 0 && (
+          <span className="unread-badge flex-shrink-0 ml-2">{unread > 9 ? '9+' : unread}</span>
+        )}
+      </div>
+    </div>
+  </Link>
+));
+
 
 
 function Chats() {
@@ -117,8 +151,30 @@ function Chats() {
     router.push(url);
   }, [router]);
 
+  const [showGreeting, setShowGreeting] = useState(false);
+  
+  useEffect(() => {
+    if (!sessionStorage.getItem('jarvis_greeted') && user) {
+      setShowGreeting(true);
+      sessionStorage.setItem('jarvis_greeted', 'true');
+      setTimeout(() => setShowGreeting(false), 2000);
+    }
+  }, [user]);
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'GOOD MORNING' : hour < 17 ? 'GOOD AFTERNOON' : hour < 21 ? 'GOOD EVENING' : 'GOOD NIGHT';
+  const greetingMessage = `${greeting}, ${user?.displayName?.toUpperCase() || 'OPERATOR'}. SYSTEMS ONLINE.`;
+
   return (
     <div className="flex flex-col h-full pb-16">
+      {showGreeting && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#050508]">
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-[#00F5FF] shadow-[0_0_15px_#00F5FF] animate-scanline" />
+          <p className="font-mono text-[#00F5FF] text-sm tracking-[0.2em] uppercase animate-pulse text-center px-4">
+            {greetingMessage}
+          </p>
+        </div>
+      )}
       {/* Header */}
       <div className="px-4 pt-10 pb-3" style={{ borderBottom: '1px solid #252535' }}>
         <div className="flex items-center justify-between">
@@ -186,38 +242,7 @@ function Chats() {
         ) : (
           <div style={{ paddingTop: visibleRange.start * 70, paddingBottom: (friendList.length - visibleRange.end) * 70 }}>
           {friendList.slice(visibleRange.start, visibleRange.end).map(({ friend, convId, last, unread }) => (
-              <Link
-                key={friend._id}
-                href={`/chat/${convId}`}
-                className="flex items-center gap-3 px-4 py-3 holo-hover transition-colors"
-                style={{ borderBottom: '1px solid #1A1A26' }}
-              >
-                <Avatar user={friend} size={46} showStatus />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="font-heading font-semibold truncate" style={{ color: unread > 0 ? '#E8E8FF' : '#B0B0C8' }}>
-                      {friend.displayName || friend.username}
-                    </span>
-                    <span className="font-mono text-[10px] ml-2 flex-shrink-0" style={{ color: '#6B6B8A' }}>
-                      {last ? timeAgo(last.createdAt) : ''}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between mt-0.5">
-                    <span className="font-body text-xs truncate" style={{ color: '#6B6B8A', maxWidth: '80%' }}>
-                      {last
-                        ? last.deletedForEveryone
-                          ? '⊘ Message deleted'
-                          : last.type === 'meme'
-                          ? `🎭 ${last.content?.startsWith?.('data:image') ? 'Custom meme' : last.memeData?.name || 'Meme'}`
-                          : last.content
-                        : `@${friend.username}`}
-                    </span>
-                    {unread > 0 && (
-                      <span className="unread-badge flex-shrink-0 ml-2">{unread > 9 ? '9+' : unread}</span>
-                    )}
-                  </div>
-                </div>
-              </Link>
+            <ChatListItem key={friend._id} friend={friend} convId={convId} last={last} unread={unread} />
           ))}
           </div>
         )}
