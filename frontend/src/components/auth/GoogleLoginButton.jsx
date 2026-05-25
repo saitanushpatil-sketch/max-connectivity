@@ -1,5 +1,7 @@
 import { signIn } from 'next-auth/react';
 import { useState } from 'react';
+import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core';
 
 function GoogleIcon() {
   return (
@@ -27,9 +29,16 @@ function GoogleIcon() {
 export default function GoogleLoginButton() {
   const [loading, setLoading] = useState(false);
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setLoading(true);
-    signIn('google', { callbackUrl: '/auth/google-sync' });
+    if (Capacitor.isNativePlatform()) {
+      await Browser.open({ 
+        url: `${process.env.NEXT_PUBLIC_API_URL}/auth/google`,
+        windowName: '_system'
+      });
+    } else {
+      signIn('google', { callbackUrl: '/auth/google-sync' });
+    }
   };
 
   return (
