@@ -4,6 +4,7 @@ import useAuthStore from '../context/authStore';
 import BottomNav from '../components/ui/BottomNav';
 import Avatar from '../components/ui/Avatar';
 import api from '../utils/api';
+import hapticTap from '../utils/haptic';
 
 const COLORS = ['#00F5FF','#FF006E','#06D6A0',
                 '#FFB703','#8B5CF6','#F97316','#EC4899'];
@@ -17,6 +18,16 @@ const BADGES = {
   meme_warrior: { icon: '⚔️', label: 'MEME WARRIOR', color: '#FF006E' },
   meme_champion: { icon: '🏆', label: 'MEME CHAMPION', color: '#FFD700' },
 };
+
+const VIBES = [
+  { key: 'available', emoji: '🟢', label: 'AVAILABLE', color: '#06D6A0' },
+  { key: 'gaming', emoji: '🎮', label: 'GAMING', color: '#8B5CF6' },
+  { key: 'listening', emoji: '🎵', label: 'LISTENING', color: '#00F5FF' },
+  { key: 'dnd', emoji: '😴', label: 'DO NOT DISTURB', color: '#FF006E' },
+  { key: 'ghost', emoji: '👻', label: 'GHOST MODE', color: '#6B6B8A' },
+  { key: 'on-fire', emoji: '🔥', label: 'ON FIRE', color: '#F97316' },
+  { key: 'chillin', emoji: '☕', label: 'CHILLIN', color: '#FFB703' },
+];
 
 const GAME_SCORES = [
   { key: 'score2048', label: '2048', icon: '🎮' },
@@ -38,6 +49,8 @@ export default function Profile() {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [currentVibe, setCurrentVibe] = useState('available');
+  const [vibeLoading, setVibeLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -46,8 +59,22 @@ export default function Profile() {
         bio: user.bio || '',
         avatarColor: user.avatarColor || '#00F5FF'
       });
+      setCurrentVibe(user.vibe || 'available');
     }
   }, [user]);
+
+  const handleSetVibe = useCallback(async (vibe) => {
+    hapticTap(6);
+    setVibeLoading(true);
+    setCurrentVibe(vibe);
+    try {
+      const { data } = await api.put('/users/vibe', { vibe });
+      if (data.user) updateUser(data.user);
+    } catch (err) {
+      setCurrentVibe(user?.vibe || 'available');
+    }
+    setVibeLoading(false);
+  }, [user, updateUser]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -98,7 +125,7 @@ export default function Profile() {
         <div className="p-5 rounded-sm"
           style={{ background: '#12121A', border: '1px solid #252535' }}>
           <div className="flex items-center gap-4 mb-4">
-            <Avatar user={user} size={72} showStatus />
+            <Avatar user={{...user, vibe: currentVibe}} size={72} showStatus showVibe />
             <div className="flex-1 min-w-0">
               <p className="font-heading text-xl font-bold"
                 style={{ color: '#E8E8FF' }}>
@@ -136,6 +163,34 @@ export default function Profile() {
               <span className="font-mono text-[10px] tracking-widest"
                 style={{ color: '#6B6B8A' }}>GIFS SENT</span>
             </div>
+          </div>
+        </div>
+
+        {/* Vibe Status */}
+        <div className="p-4 rounded-sm"
+          style={{ background: '#12121A', border: '1px solid #252535' }}>
+          <div className="font-mono text-[10px] tracking-widest mb-3"
+            style={{ color: '#6B6B8A' }}>// SET YOUR VIBE</div>
+          <div className="flex flex-wrap gap-2">
+            {VIBES.map((v) => (
+              <button
+                key={v.key}
+                type="button"
+                onClick={() => handleSetVibe(v.key)}
+                disabled={vibeLoading}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-sm transition-all"
+                style={{
+                  background: currentVibe === v.key ? `${v.color}18` : '#0A0A0F',
+                  border: `1px solid ${currentVibe === v.key ? v.color : '#252535'}`,
+                  color: currentVibe === v.key ? v.color : '#6B6B8A',
+                  boxShadow: currentVibe === v.key ? `0 0 10px ${v.color}22` : 'none',
+                  opacity: vibeLoading ? 0.7 : 1,
+                }}
+              >
+                <span style={{ fontSize: 14 }}>{v.emoji}</span>
+                <span className="font-mono text-[9px] tracking-widest">{v.label}</span>
+              </button>
+            ))}
           </div>
         </div>
 

@@ -8,15 +8,15 @@ import { SkeletonRow } from '../components/ui/Skeleton';
 import useToast from '../hooks/useToast';
 import HudButton from '../components/ui/HudButton';
 import useAuthStore from '../context/authStore';
+import hapticTap from '../utils/haptic';
 
 const buildConvId = (a, b) => [a, b].sort().join('_');
-
-
 
 const Friends = () => {
   const { user } = useAuthStore();
   const router = useRouter();
   const [tab, setTab] = useState('friends');
+  const [filter, setFilter] = useState('all'); // 'all' | 'close'
   const [friends, setFriends] = useState([]);
   const [incoming, setIncoming] = useState([]);
   const [outgoing, setOutgoing] = useState([]);
@@ -57,6 +57,25 @@ const Friends = () => {
     } catch (_) {}
   }, [fetchAll]);
 
+  const toggleCloseFriend = useCallback(async (friendId) => {
+    try {
+      hapticTap(8);
+      const { data } = await api.post(`/friends/close-friend/${friendId}`);
+      setFriends(prev => prev.map(f =>
+        f._id === friendId ? { ...f, isCloseFriend: data.isCloseFriend } : f
+      ));
+    } catch (err) {
+      toast.error('Failed to update close friend');
+    }
+  }, [toast]);
+
+  const filteredFriends = useMemo(() => {
+    if (filter === 'close') return friends.filter(f => f.isCloseFriend);
+    return friends;
+  }, [friends, filter]);
+
+  const closeFriendsCount = useMemo(() => friends.filter(f => f.isCloseFriend).length, [friends]);
+
   const TABS = [
     { key: 'friends', label: `SQUAD (${friends.length})` },
     { key: 'requests', label: `REQUESTS ${incoming.length > 0 ? `(${incoming.length})` : ''}` },
@@ -87,6 +106,35 @@ const Friends = () => {
         ))}
       </div>
 
+      {/* Close Friends Filter (only in friends tab) */}
+      {tab === 'friends' && friends.length > 0 && (
+        <div className="flex px-4 pt-2 pb-1 gap-2">
+          <button
+            onClick={() => setFilter('all')}
+            className="font-mono text-[10px] tracking-widest px-3 py-1.5 rounded-sm transition-all"
+            style={{
+              background: filter === 'all' ? 'rgba(0,245,255,0.12)' : '#12121A',
+              border: `1px solid ${filter === 'all' ? '#00F5FF' : '#252535'}`,
+              color: filter === 'all' ? '#00F5FF' : '#6B6B8A',
+            }}
+          >
+            ALL ({friends.length})
+          </button>
+          <button
+            onClick={() => setFilter('close')}
+            className="font-mono text-[10px] tracking-widest px-3 py-1.5 rounded-sm transition-all"
+            style={{
+              background: filter === 'close' ? 'rgba(255,183,3,0.12)' : '#12121A',
+              border: `1px solid ${filter === 'close' ? '#FFB703' : '#252535'}`,
+              color: filter === 'close' ? '#FFB703' : '#6B6B8A',
+              boxShadow: filter === 'close' ? '0 0 8px rgba(255,183,3,0.15)' : 'none',
+            }}
+          >
+            ⭐ CLOSE ({closeFriendsCount})
+          </button>
+        </div>
+      )}
+
       <PullToRefresh onRefresh={fetchAll} className="flex-1">
         {loading ? (
           <>
@@ -95,20 +143,56 @@ const Friends = () => {
             ))}
           </>
         ) : tab === 'friends' ? (
-          friends.length === 0 ? (
+          filteredFriends.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 gap-3">
-              <span style={{ fontSize: 32 }}>👥</span>
-              <span className="font-mono text-xs tracking-widest" style={{ color: '#6B6B8A' }}>NO SQUAD MEMBERS</span>
+              <span style={{ fontSize: 32 }}>{filter === 'close' ? '⭐' : '👥'}</span>
+              <span className="font-mono text-xs tracking-widest" style={{ color: '#6B6B8A' }}>
+                {filter === 'close' ? 'NO CLOSE FRIENDS YET' : 'NO SQUAD MEMBERS'}
+              </span>
+              {filter === 'close' && (
+                <span className="font-mono text-[10px]" style={{ color: '#6B6B8A' }}>
+                  Tap the ☆ next to a friend to add them
+                </span>
+              )}
             </div>
           ) : (
-            friends.map((f) => (
-              <div key={f._id} className="flex items-center gap-3 px-4 py-3 holo-hover" style={{ borderBottom: '1px solid #1A1A26' }}>
+            filteredFriends.map((f) => (
+              <div
+                key={f._id}
+                className="flex items-center gap-3 px-4 py-3 holo-hover"
+                style={{
+                  borderBottom: '1px solid #1A1A26',
+                  borderLeft: f.isCloseFriend ? '2px solid #FFB703' : '2px solid transparent',
+                  background: f.isCloseFriend ? 'rgba(255,183,3,0.03)' : 'transparent',
+                }}
+              >
                 <Avatar user={f} size={42} showStatus />
                 <div className="flex-1 min-w-0">
-                  <p className="font-heading font-semibold" style={{ color: '#E8E8FF', fontSize: 14 }}>{f.displayName || f.username}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-heading font-semibold" style={{ color: '#E8E8FF', fontSize: 14 }}>
+                      {f.displayName || f.username}
+                    </p>
+                    {f.isCloseFriend && (
+                      <span style={{ fontSize: 10, color: '#FFB703', filter: 'drop-shadow(0 0 4px #FFB703)' }}>⭐</span>
+                    )}
+                  </div>
                   <p className="font-mono text-[10px] tracking-widest" style={{ color: '#6B6B8A' }}>@{f.username}</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
+                  {/* Close Friend Toggle */}
+                  <button
+                    onClick={() => toggleCloseFriend(f._id)}
+                    className="hud-btn px-2 py-1.5 rounded-sm text-[10px] transition-all"
+                    style={{
+                      background: f.isCloseFriend ? 'rgba(255,183,3,0.15)' : 'rgba(0,245,255,0.05)',
+                      border: `1px solid ${f.isCloseFriend ? 'rgba(255,183,3,0.5)' : 'rgba(0,245,255,0.2)'}`,
+                      color: f.isCloseFriend ? '#FFB703' : '#6B6B8A',
+                      filter: f.isCloseFriend ? 'drop-shadow(0 0 4px #FFB703)' : 'none',
+                    }}
+                    title={f.isCloseFriend ? 'Remove from close friends' : 'Add to close friends'}
+                  >
+                    {f.isCloseFriend ? '⭐' : '☆'}
+                  </button>
                   <button
                     onClick={() => router.push(`/chat/${buildConvId(user._id, f._id)}`)}
                     className="hud-btn px-3 py-1.5 rounded-sm text-[10px]"

@@ -24,6 +24,23 @@ const GifPanel = dynamic(() => import('../../components/meme/GifPanel'), {
 const buildConvId = (a, b) => [a, b].sort().join('_');
 const MESSAGE_MAX_LENGTH = 2000;
 
+const CHAT_THEMES = {
+  jarvis:  { accent: '#00F5FF', bg: '#0A0A0F', bubble: '#12121A', border: '#252535', label: '💎 JARVIS' },
+  sunset:  { accent: '#FF6B6B', bg: '#1A0A0F', bubble: '#1A1215', border: '#352525', label: '🌅 SUNSET' },
+  forest:  { accent: '#06D6A0', bg: '#0A0F0D', bubble: '#121A17', border: '#253530', label: '🌲 FOREST' },
+  ocean:   { accent: '#4ECDC4', bg: '#0A0D0F', bubble: '#12171A', border: '#253035', label: '🌊 OCEAN' },
+  void:    { accent: '#8B5CF6', bg: '#050508', bubble: '#0D0D14', border: '#1A1A26', label: '🕳️ VOID' },
+};
+
+const getStoredTheme = (convId) => {
+  if (typeof window === 'undefined') return 'jarvis';
+  return localStorage.getItem(`chat_theme_${convId}`) || 'jarvis';
+};
+const setStoredTheme = (convId, theme) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(`chat_theme_${convId}`, theme);
+};
+
 const LOCAL_MEMES = [
   ...['mahesh-babu-pointing', 'allu-arjun-pushpa', 'pawan-kalyan-serious', 'ntr-angry', 'brahmanandam-reaction', 'venkatesh-surprised'].map(n => ({ _id: n, name: n.replace(/-/g, ' ').toUpperCase(), url: `/memes/${n}.svg`, category: 'Telugu', isTemplate: true })),
   ...['srk-arms-open', 'ranveer-screaming', 'akshay-salute', 'amitabh-pointing'].map(n => ({ _id: n, name: n.replace(/-/g, ' ').toUpperCase(), url: `/memes/${n}.svg`, category: 'Hindi', isTemplate: true })),
@@ -63,9 +80,32 @@ export default function ChatPage() {
   const messagesContainerRef = useRef(null);
   const { toast } = useToast();
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
+  const [chatTheme, setChatTheme] = useState('jarvis');
+  const [showThemePicker, setShowThemePicker] = useState(false);
+  // Disappearing messages: 0 = off, 24 = 24h, 168 = 7 days
+  const [disappearAfter, setDisappearAfter] = useState(0);
+  // Voice recording
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordingTimerRef = useRef(null);
 
   // Derive friendId from convId
   const friendId = convId ? convId.split('_').find((id) => id !== user?._id) : null;
+
+  // Load theme from localStorage
+  useEffect(() => {
+    if (convId) setChatTheme(getStoredTheme(convId));
+  }, [convId]);
+
+  const handleSetTheme = (theme) => {
+    setChatTheme(theme);
+    setStoredTheme(convId, theme);
+    setShowThemePicker(false);
+  };
+
+  const theme = CHAT_THEMES[chatTheme] || CHAT_THEMES.jarvis;
 
   const fetchFriend = async (fid) => {
     try {
@@ -204,6 +244,7 @@ export default function ChatPage() {
         content,
         type: 'text',
         replyTo: replyTo?._id || null,
+        disappearAfter: disappearAfter || undefined,
       });
       setMessages((prev) =>
         prev.map((m) => m._id === tempMsg._id ? response.message : m)
@@ -250,6 +291,7 @@ export default function ChatPage() {
         content,
         type: 'gif',
         memeData,
+        disappearAfter: disappearAfter || undefined,
       });
       setMessages((prev) =>
         prev.map((m) => m._id === tempMsg._id ? response.message : m)
@@ -339,6 +381,82 @@ export default function ChatPage() {
     }
   }, [handleSendText]);
 
+  // Voice recording handlers
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        // Convert to base64 for sending
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const base64 = reader.result;
+          if (!base64 || audioChunksRef.current.length === 0) return;
+
+          const tempMsg = {
+            _id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            conversationId: convId,
+            sender: { _id: user._id, username: user.username, displayName: user.displayName, avatarColor: user.avatarColor },
+            type: 'voice',
+            content: `Voice message (${recordingDuration}s)`,
+            memeData: { url: base64, duration: recordingDuration },
+            reactions: [],
+            readBy: [user._id],
+            createdAt: new Date().toISOString(),
+            _optimistic: true,
+          };
+          setMessages(prev => [...prev, tempMsg]);
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'instant' }), 10);
+
+          try {
+            const response = await sendMessage({
+              conversationId: convId,
+              receiverId: friendId,
+              content: `Voice message (${recordingDuration}s)`,
+              type: 'voice',
+              memeData: { url: base64, duration: recordingDuration },
+              disappearAfter: disappearAfter || undefined,
+            });
+            setMessages(prev => prev.map(m => m._id === tempMsg._id ? response.message : m));
+          } catch {
+            setMessages(prev => prev.filter(m => m._id !== tempMsg._id));
+            toast.error('Failed to send voice message');
+          }
+        };
+        reader.readAsDataURL(blob);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingDuration(0);
+      hapticTap(15);
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(d => d + 1);
+      }, 1000);
+    } catch {
+      toast.error('Microphone access denied');
+    }
+  }, [convId, friendId, user, sendMessage, toast, recordingDuration, disappearAfter]);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+    clearInterval(recordingTimerRef.current);
+    setIsRecording(false);
+    hapticTap(10);
+  }, []);
+
   if (loading) {
     return (
       <div className="flex flex-col h-full items-center justify-center">
@@ -362,7 +480,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="flex flex-col h-full relative" style={{ background: theme.bg }}>
       {!socketConnected && (
         <div
           className="absolute top-0 left-0 right-0 z-20 py-1 text-center font-mono text-[10px] tracking-widest"
@@ -374,7 +492,7 @@ export default function ChatPage() {
       {/* Header */}
       <div
         className="flex items-center gap-3 px-3 py-3 flex-shrink-0"
-        style={{ background: 'rgba(18,18,26,0.95)', borderBottom: '1px solid #252535', backdropFilter: 'blur(20px)' }}
+        style={{ background: `${theme.bubble}ee`, borderBottom: `1px solid ${theme.border}`, backdropFilter: 'blur(20px)' }}
       >
         <button onClick={() => router.back()} className="p-1" style={{ color: '#6B6B8A' }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -424,7 +542,17 @@ export default function ChatPage() {
         >
           📸
         </button>
-                <div className="font-mono text-[10px] tracking-widest px-2 py-1 rounded-sm" style={{ background: '#1A1A26', border: '1px solid #252535', color: '#6B6B8A' }}>
+        {/* Theme picker button */}
+        <button
+          type="button"
+          onClick={() => setShowThemePicker(!showThemePicker)}
+          className="hud-btn px-2 py-1 rounded-sm text-[10px]"
+          style={{ background: `${theme.accent}15`, border: `1px solid ${theme.accent}55`, color: theme.accent }}
+          title="Change chat theme"
+        >
+          🎨
+        </button>
+                <div className="font-mono text-[10px] tracking-widest px-2 py-1 rounded-sm" style={{ background: theme.bubble, border: `1px solid ${theme.border}`, color: '#6B6B8A' }}>
           SECURE
         </div>
         <div ref={e2eRef} className="relative">
@@ -457,6 +585,32 @@ export default function ChatPage() {
         </div>
         </div>
       </div>
+
+      {/* Theme Picker Dropdown */}
+      {showThemePicker && (
+        <div
+          className="absolute top-16 right-3 z-30 p-2 rounded-sm flex flex-col gap-1"
+          style={{ background: theme.bubble, border: `1px solid ${theme.border}`, boxShadow: `0 4px 20px rgba(0,0,0,0.5)` }}
+        >
+          <div className="font-mono text-[9px] tracking-widest px-2 py-1" style={{ color: '#6B6B8A' }}>CHAT THEME</div>
+          {Object.entries(CHAT_THEMES).map(([key, t]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => handleSetTheme(key)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-sm text-left transition-all"
+              style={{
+                background: chatTheme === key ? `${t.accent}18` : 'transparent',
+                border: `1px solid ${chatTheme === key ? t.accent : 'transparent'}`,
+                color: chatTheme === key ? t.accent : '#6B6B8A',
+              }}
+            >
+              <span className="w-3 h-3 rounded-full" style={{ background: t.accent, boxShadow: `0 0 6px ${t.accent}66` }} />
+              <span className="font-mono text-[10px] tracking-widest">{t.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Load more */}
       {hasMore && (
@@ -534,7 +688,7 @@ export default function ChatPage() {
       )}
 
       {/* Bottom bar */}
-      <div className="flex-shrink-0" style={{ background: '#0A0A0F', borderTop: '1px solid #252535' }}>
+      <div className="flex-shrink-0" style={{ background: theme.bg, borderTop: `1px solid ${theme.border}` }}>
         {/* Reply strip */}
         {replyTo && (
           <div
@@ -579,8 +733,32 @@ export default function ChatPage() {
             🎭
           </button>
 
+          {/* Disappearing messages toggle */}
+          <button
+            onClick={() => {
+              hapticTap(6);
+              const cycle = { 0: 24, 24: 168, 168: 0 };
+              setDisappearAfter(prev => cycle[prev] ?? 0);
+            }}
+            className="w-9 h-9 flex items-center justify-center rounded-sm flex-shrink-0 transition-all"
+            style={{
+              background: disappearAfter ? 'rgba(255,183,3,0.12)' : '#1A1A26',
+              border: `1px solid ${disappearAfter ? 'rgba(255,183,3,0.5)' : '#252535'}`,
+              fontSize: 14,
+              color: disappearAfter ? '#FFB703' : '#6B6B8A',
+            }}
+            title={disappearAfter ? `Messages disappear in ${disappearAfter}h` : 'Disappearing messages off'}
+          >
+            ⏱
+          </button>
+
           {/* Text input */}
           <div className="flex-1 min-w-0 flex flex-col">
+            {disappearAfter > 0 && (
+              <div className="font-mono text-[8px] tracking-widest mb-1 px-1" style={{ color: '#FFB703' }}>
+                ⏱ DISAPPEAR: {disappearAfter === 24 ? '24H' : '7D'}
+              </div>
+            )}
             <input
               ref={inputRef}
               className="hud-input w-full px-3 py-2.5 rounded-sm text-sm"
@@ -593,23 +771,66 @@ export default function ChatPage() {
             />
           </div>
 
-          {/* Send button */}
-          <button
-            onClick={handleSendText}
-            disabled={sending}
-            className="w-9 h-9 flex items-center justify-center rounded-sm flex-shrink-0 transition-all"
-            style={{
-              background: 'linear-gradient(135deg, #00F5FF, #0099CC)',
-              border: `1px solid #00F5FF`,
-              boxShadow: '0 0 12px rgba(0,245,255,0.3)',
-              opacity: sending ? 0.7 : 1,
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0A0A0F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-            </svg>
-          </button>
+          {/* Voice record / Send button */}
+          {isRecording ? (
+            <button
+              onClick={stopRecording}
+              className="w-9 h-9 flex items-center justify-center rounded-sm flex-shrink-0 transition-all"
+              style={{
+                background: 'rgba(255,0,110,0.2)',
+                border: '1px solid #FF006E',
+                boxShadow: '0 0 12px rgba(255,0,110,0.4)',
+                color: '#FF006E',
+                animation: 'pulse 1s infinite',
+              }}
+              title="Stop recording"
+            >
+              ⬛
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={startRecording}
+                className="w-9 h-9 flex items-center justify-center rounded-sm flex-shrink-0 transition-all"
+                style={{
+                  background: '#1A1A26',
+                  border: '1px solid #252535',
+                  fontSize: 14,
+                  color: '#6B6B8A',
+                }}
+                title="Record voice message"
+              >
+                🎤
+              </button>
+              <button
+                onClick={handleSendText}
+                disabled={sending}
+                className="w-9 h-9 flex items-center justify-center rounded-sm flex-shrink-0 transition-all"
+                style={{
+                  background: 'linear-gradient(135deg, #00F5FF, #0099CC)',
+                  border: `1px solid #00F5FF`,
+                  boxShadow: '0 0 12px rgba(0,245,255,0.3)',
+                  opacity: sending ? 0.7 : 1,
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0A0A0F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+              </button>
+            </>
+          )}
         </div>
+
+        {/* Recording indicator */}
+        {isRecording && (
+          <div className="flex items-center gap-2 px-4 py-2" style={{ background: 'rgba(255,0,110,0.08)', borderTop: '1px solid rgba(255,0,110,0.2)' }}>
+            <span className="w-2 h-2 rounded-full" style={{ background: '#FF006E', animation: 'pulse 1s infinite' }} />
+            <span className="font-mono text-[10px] tracking-widest" style={{ color: '#FF006E' }}>RECORDING</span>
+            <span className="font-mono text-[10px]" style={{ color: '#FF006E' }}>{recordingDuration}s</span>
+            <span className="flex-1" />
+            <button onClick={stopRecording} className="font-mono text-[10px] px-2 py-0.5 rounded-sm" style={{ background: 'rgba(255,0,110,0.15)', border: '1px solid #FF006E', color: '#FF006E' }}>STOP & SEND</button>
+          </div>
+        )}
       </div>
     </div>
   );

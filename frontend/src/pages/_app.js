@@ -111,11 +111,12 @@ function AppInner({ Component, pageProps }) {
           <AnimatePresence mode="wait">
             <motion.div
               key={router.pathname}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              layout={false}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', willChange: 'opacity' }}
             >
               <Component {...pageProps} />
             </motion.div>

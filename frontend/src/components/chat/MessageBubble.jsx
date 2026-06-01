@@ -172,6 +172,25 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
                 </span>
               )}
             </div>
+          ) : message.type === 'voice' ? (
+            <div className="flex items-center gap-2" style={{ minWidth: 180 }}>
+              <span style={{ fontSize: 16 }}>🎤</span>
+              {message.memeData?.url ? (
+                <audio
+                  controls
+                  preload="none"
+                  style={{ height: 32, maxWidth: 200, flex: 1 }}
+                  src={message.memeData.url}
+                />
+              ) : (
+                <span className="font-mono text-xs" style={{ color: '#6B6B8A' }}>Audio unavailable</span>
+              )}
+              {message.memeData?.duration && (
+                <span className="font-mono text-[10px]" style={{ color: '#6B6B8A' }}>
+                  {message.memeData.duration}s
+                </span>
+              )}
+            </div>
           ) : (
             <span style={{ fontSize: 14, lineHeight: 1.5, color: '#E8E8FF' }}>{message.content}</span>
           )}
@@ -275,23 +294,29 @@ function MessageBubble({ message, isOwn, onReact, onReply, onDelete }) {
 
         {showEmojiPicker && (
           <div
-            className="flex gap-1 mt-1 p-2 rounded-sm"
-            style={{ background: '#1A1A26', border: '1px solid #252535' }}
+            className="mt-1 p-2 rounded-sm"
+            style={{ background: '#1A1A26', border: '1px solid #252535', maxWidth: 260 }}
           >
-            {EMOJIS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                className="text-xl hover:scale-125 transition-transform active:scale-95"
-                onClick={() => {
-                  onReact?.(message._id, emoji);
-                  setShowEmojiPicker(false);
-                  setShowActions(false);
-                }}
-              >
-                {emoji}
-              </button>
-            ))}
+            <div className="flex flex-wrap gap-1">
+              {['❤️','😂','🔥','👀','💀','🤯','😍','👏','😭','🙏',
+                '💯','✨','🎉','😤','🤔','👍','👎','😎','🥺','💀',
+                '🤣','😳','🫡','🫠','💅','🙄','😈','🥴','🤝','💪',
+                '❤️‍🔥','🫶','🤌','💜','🖤','💙','😮‍💨','🤡','👑','⚡'].map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  className="text-lg hover:scale-125 transition-transform active:scale-95 p-0.5"
+                  style={{ width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  onClick={() => {
+                    onReact?.(message._id, emoji);
+                    setShowEmojiPicker(false);
+                    setShowActions(false);
+                  }}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>

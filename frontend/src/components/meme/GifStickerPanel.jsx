@@ -34,8 +34,8 @@ export default function GifStickerPanel({ onSelect, onClose }) {
     setLoading(true);
     try {
       const endpoint = q
-        ? `/memes/gifs/search?q=${encodeURIComponent(q)}&type=${type}&offset=${off}&limit=20`
-        : `/memes/gifs/trending?type=${type}&limit=20`;
+        ? `/gifs/search?q=${encodeURIComponent(q)}&type=${type}&offset=${off}&limit=20`
+        : `/gifs/trending?type=${type}&offset=${off}&limit=20`;
       const { data } = await api.get(endpoint);
       const newItems = data.items || [];
       setItems((prev) => (reset ? newItems : [...prev, ...newItems]));
