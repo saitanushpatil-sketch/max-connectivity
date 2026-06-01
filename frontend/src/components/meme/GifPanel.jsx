@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-
-const TENOR_KEY = 'AIzaSyAyimkuYQYF_FXVALexPzfiygou1omLPZQ';
+import api from '../../utils/api';
 
 const PRESETS = [
   { label: '🔥 Trending', q: '' },
@@ -11,21 +10,17 @@ const PRESETS = [
   { label: '🙏 Desi', q: 'desi' },
 ];
 
-const searchTenor = async (query, isSticker) => {
-  const endpoint = query 
-    ? `https://tenor.googleapis.com/v2/search?q=${query}&key=AIzaSyAyimkuYQYF_FXVALexPzfiygou1omLPZQ&limit=20&media_filter=gif`
-    : `https://tenor.googleapis.com/v2/featured?key=AIzaSyAyimkuYQYF_FXVALexPzfiygou1omLPZQ&limit=20&media_filter=gif`;
-    
-  const finalEndpoint = isSticker ? `${endpoint}&searchfilter=sticker` : endpoint;
-
-  const res = await fetch(finalEndpoint);
-  const data = await res.json();
-  return data.results.map(r => ({
-    id: r.id,
-    url: r.media_formats.gif.url,
-    preview: r.media_formats.tinygif.url,
-    title: r.content_description,
-    isSticker
+const fetchGifs = async (query, type) => {
+  const endpoint = query
+    ? `/gifs/search?q=${encodeURIComponent(query)}&type=${type}&limit=20`
+    : `/gifs/trending?type=${type}&limit=20`;
+  const { data } = await api.get(endpoint);
+  return (data.items || []).map(item => ({
+    id: item.id,
+    url: item.url,
+    preview: item.preview || item.url,
+    title: item.title || 'GIF',
+    isSticker: item.isSticker || false,
   }));
 };
 
@@ -39,7 +34,7 @@ export default function GifPanel({ onSelect, onClose }) {
   const load = async (q, type) => {
     setLoading(true);
     try {
-      const results = await searchTenor(q, type === 'stickers');
+      const results = await fetchGifs(q, type);
       setItems(results);
     } catch {
       setItems([]);
@@ -130,7 +125,7 @@ export default function GifPanel({ onSelect, onClose }) {
             <input
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder={`Search Tenor...`}
+              placeholder="Search GIFs..."
               autoFocus
               style={{
                 flex: 1, background: 'none', border: 'none',

@@ -43,6 +43,7 @@ app.get('/api/ice-config', (req, res) => {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
       {
         urls: 'turn:openrelay.metered.ca:80',
         username: 'openrelayproject',
@@ -55,6 +56,11 @@ app.get('/api/ice-config', (req, res) => {
       },
       {
         urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turns:openrelay.metered.ca:443?transport=tcp',
         username: 'openrelayproject',
         credential: 'openrelayproject'
       }
@@ -94,11 +100,13 @@ connectDB().then(() => {
 
   // Keep alive ping every 14 minutes
   if (process.env.NODE_ENV === 'production') {
+    const selfUrl = process.env.RAILWAY_PUBLIC_DOMAIN
+      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}/health`
+      : `http://localhost:${PORT}/health`;
     setInterval(() => {
-      fetch('https://max-connectivity1.onrender.com/health')
-        .catch(() => {})
-    }, 14 * 60 * 1000)
-  };
+      fetch(selfUrl).catch(() => {});
+    }, 14 * 60 * 1000);
+  }
 }).catch(err => {
   console.error('❌ Failed to connect to DB:', err);
   process.exit(1);

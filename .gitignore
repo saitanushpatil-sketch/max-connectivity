@@ -10,3 +10,5 @@ frontend/android/
 frontend/out/
 frontend/android/caches/
 frontend/android/wrapper/
+.vercel
+.env*

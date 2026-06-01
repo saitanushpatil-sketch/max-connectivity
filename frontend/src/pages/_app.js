@@ -8,6 +8,11 @@ import { getSocket } from '../hooks/useSocket';
 import useSocket from '../hooks/useSocket';
 import IncomingCallModal from '../components/call/IncomingCallModal';
 import GreetingOverlay from '../components/ui/GreetingOverlay';
+import WindNotification from '../components/ui/WindNotification';
+import NotificationToast from '../components/ui/NotificationToast';
+import { useWindNotification } from '../hooks/useWindNotification';
+import { ToastProvider } from '../hooks/useToast';
+import useToast from '../hooks/useToast';
 import { AnimatePresence, motion } from 'framer-motion';
 import '../styles/globals.css';
 
@@ -19,15 +24,36 @@ const PUBLIC_ROUTES = [
 
 function AppInner({ Component, pageProps }) {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, user } = useAuthStore();
   const { incomingCall, setIncomingCall, clearIncomingCall } = useCallStore();
   const [socketConnected, setSocketConnected] = useState(true);
+  const { current: windNotif, show: showWind, dismiss: dismissWind } = useWindNotification();
+  const { toasts, dismiss: dismissToast } = useToast();
 
   useSocket({
     onConnect: () => setSocketConnected(true),
     onDisconnect: () => setSocketConnected(false),
     onCallIncoming: (data) => {
       setIncomingCall(data);
+    },
+    onNewMessageNotification: (data) => {
+      // Don't show wind notification if we're on the same chat page
+      const currentConvId = router.query.convId;
+      if (currentConvId && data.conversationId === currentConvId) return;
+
+      const from = data.from || {};
+      const msg = data.message || {};
+      const body = msg.type === 'voice' ? '🎤 Voice message' :
+                   msg.type === 'gif' ? '🎞️ GIF' :
+                   msg.type === 'meme' ? '🎭 Meme' :
+                   (msg.content || '').substring(0, 60);
+
+      showWind({
+        title: from.displayName || from.username || 'New Message',
+        body,
+        avatarColor: from.avatarColor,
+        icon: '💬',
+      });
     },
   });
 
@@ -84,6 +110,30 @@ function AppInner({ Component, pageProps }) {
           color: '#FFB703',
         }}>
           ● RECONNECTING...
+        </div>
+      )}
+
+      {/* Wind notification — global overlay */}
+      <WindNotification notification={windNotif} onClose={dismissWind} />
+
+      {/* Toast notifications — rendered at the top */}
+      {toasts.length > 0 && (
+        <div style={{
+          position: 'fixed', top: 12, left: '50%', transform: 'translateX(-50%)',
+          width: '100%', maxWidth: 420, zIndex: 9998,
+          display: 'flex', flexDirection: 'column', gap: 8,
+          padding: '0 12px',
+          pointerEvents: 'none',
+        }}>
+          {toasts.map((toast) => (
+            <div key={toast.id} style={{ pointerEvents: 'auto' }}>
+              <NotificationToast
+                toast={toast}
+                onDismiss={dismissToast}
+                onAction={toast.onAction}
+              />
+            </div>
+          ))}
         </div>
       )}
 
@@ -175,8 +225,9 @@ export default function App({ Component, pageProps: { session, ...pageProps } })
 
   return (
     <SessionProvider session={session}>
-      <AppInner Component={Component} pageProps={pageProps} />
+      <ToastProvider>
+        <AppInner Component={Component} pageProps={pageProps} />
+      </ToastProvider>
     </SessionProvider>
   );
 }
-

@@ -27,4 +27,21 @@ const searchGifs = async (q, limit, offset, type) => {
   };
 };
 
-module.exports = { searchGifs };
+const getTrending = async (limit = 20, type = 'gifs') => {
+  return searchGifs('', limit, 0, type);
+};
+
+const getCategories = async () => {
+  return [
+    { name: 'Trending', query: '' },
+    { name: 'Reactions', query: 'reaction' },
+    { name: 'Telugu', query: 'telugu meme' },
+    { name: 'Bollywood', query: 'bollywood' },
+    { name: 'Gaming', query: 'gaming' },
+    { name: 'Funny', query: 'funny' },
+    { name: 'Desi', query: 'desi' },
+    { name: 'Love', query: 'love heart' },
+  ];
+};
+
+module.exports = { searchGifs, getTrending, getCategories };
