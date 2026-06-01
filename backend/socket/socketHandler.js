@@ -83,9 +83,15 @@ exports.initSocket = (io) => {
     // Send message via socket (real-time delivery)
     socket.on('send_message', async (data, callback) => {
       try {
-        const { conversationId, receiverId, content, type, memeData, replyTo } = data;
+        const { conversationId, receiverId, content, type, memeData, replyTo, disappearAfter } = data;
         if (!conversationId || !receiverId || !content) {
           return callback?.({ error: 'Missing required fields' });
+        }
+
+        // Calculate expiresAt for disappearing messages
+        let expiresAt = null;
+        if (disappearAfter && typeof disappearAfter === 'number' && disappearAfter > 0) {
+          expiresAt = new Date(Date.now() + disappearAfter * 60 * 60 * 1000);
         }
 
         const msg = await Message.create({
@@ -96,6 +102,7 @@ exports.initSocket = (io) => {
           memeData: (type === 'meme' || type === 'gif') ? memeData : undefined,
           replyTo: replyTo || null,
           readBy: [userId],
+          expiresAt,
         });
 
         const populated = await Message.findById(msg._id)

@@ -12,7 +12,8 @@ const gameScoreSchema = new mongoose.Schema({
     enum: [
       'reaction-test', 'snake', '2048', 'simon-says', 
       'whack-a-mole', 'type-racer', 'wordle', 'flappy-bird', 
-      'tic-tac-toe', 'cryptogram'
+      'tic-tac-toe', 'cryptogram', 'desi-quiz', 'car-racer',
+      'space-shooter', 'meme-match', 'meme-quiz'
     ]
   },
   score: {

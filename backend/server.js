@@ -12,6 +12,8 @@ const friendRoutes = require('./routes/friends');
 const messageRoutes = require('./routes/messages');
 const memeRoutes = require('./routes/memes');
 const pushRoutes = require('./routes/push');
+const gameRoutes = require('./routes/games');
+const gifRoutes = require('./routes/gifs');
 
 const app = express();
 const server = http.createServer(app);
@@ -35,12 +37,40 @@ app.get('/health', (req, res) => res.json({
   port: process.env.PORT 
 }));
 
+// ICE server config for WebRTC calls
+app.get('/api/ice-config', (req, res) => {
+  res.json({
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      {
+        urls: 'turn:openrelay.metered.ca:80',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      }
+    ],
+    iceCandidatePoolSize: 10,
+  });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/memes', memeRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/games', gameRoutes);
+app.use('/api/gifs', gifRoutes);
 
 app.use((req, res) => res.status(404).json({ error: 'Route not found' }));
 app.use((err, req, res, next) => {

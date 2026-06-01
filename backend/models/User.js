@@ -56,6 +56,11 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  vibe: {
+    type: String,
+    enum: ['available', 'gaming', 'listening', 'dnd', 'ghost', 'on-fire', 'chillin'],
+    default: 'available',
+  },
   // Gamification
   streakCount: { type: Number, default: 0 },
   lastStreakDate: { type: Date },
@@ -101,6 +106,8 @@ const userSchema = new mongoose.Schema({
   },
   // Friend list (stored as references for fast lookup)
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  // Close friends subset
+  closeFriends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   // Web Push subscription (endpoint + keys)
   pushSubscription: {
     type: mongoose.Schema.Types.Mixed,
@@ -166,6 +173,7 @@ userSchema.methods.toPublicJSON = function () {
     bio: this.bio,
     avatarColor: this.avatarColor,
     status: this.status,
+    vibe: this.vibe,
     lastSeen: this.lastSeen,
     streakCount: this.streakCount,
     totalMemesSent: this.totalMemesSent,
@@ -178,6 +186,7 @@ userSchema.methods.toPublicJSON = function () {
     tttWins: this.tttWins,
     carRacerHighScore: this.carRacerHighScore,
     spaceShooterHighScore: this.spaceShooterHighScore,
+    closeFriends: this.closeFriends,
     createdAt: this.createdAt,
   };
 };

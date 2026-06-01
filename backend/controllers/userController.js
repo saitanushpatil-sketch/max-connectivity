@@ -35,3 +35,22 @@ exports.getUserById = async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 };
+
+// PUT /api/users/vibe — Update vibe status
+const VALID_VIBES = ['available', 'gaming', 'listening', 'dnd', 'ghost', 'on-fire', 'chillin'];
+exports.updateVibe = async (req, res) => {
+  try {
+    const { vibe } = req.body;
+    if (!vibe || !VALID_VIBES.includes(vibe)) {
+      return res.status(400).json({ error: 'Invalid vibe status' });
+    }
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { vibe },
+      { new: true }
+    ).select('-password');
+    res.json({ vibe: user.vibe, user: user.toPublicJSON() });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+};

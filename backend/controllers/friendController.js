@@ -83,7 +83,20 @@ exports.getFriends = async (req, res) => {
       'friends',
       'username displayName avatarColor status lastSeen'
     );
-    res.json({ friends: user.friends.map(f => f.toPublicJSON()) });
+    const closeFriendIds = (user.closeFriends || []).map(id => id.toString());
+    const friends = user.friends.map(f => ({
+      ...f.toPublicJSON(),
+      isCloseFriend: closeFriendIds.includes(f._id.toString()),
+    }));
+    // Sort: close friends first, then by status (online first)
+    friends.sort((a, b) => {
+      if (a.isCloseFriend && !b.isCloseFriend) return -1;
+      if (!a.isCloseFriend && b.isCloseFriend) return 1;
+      if (a.status === 'online' && b.status !== 'online') return -1;
+      if (a.status !== 'online' && b.status === 'online') return 1;
+      return 0;
+    });
+    res.json({ friends });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -106,8 +119,8 @@ exports.getPending = async (req, res) => {
 exports.removeFriend = async (req, res) => {
   try {
     const friendId = req.params.id;
-    await User.findByIdAndUpdate(req.userId, { $pull: { friends: friendId } });
-    await User.findByIdAndUpdate(friendId, { $pull: { friends: req.userId } });
+    await User.findByIdAndUpdate(req.userId, { $pull: { friends: friendId, closeFriends: friendId } });
+    await User.findByIdAndUpdate(friendId, { $pull: { friends: req.userId, closeFriends: req.userId } });
     // Clean up accepted requests
     await FriendRequest.deleteMany({
       $or: [
@@ -120,3 +133,44 @@ exports.removeFriend = async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 };
+
+// POST /api/friends/close-friend/:userId — Toggle close friend
+exports.toggleCloseFriend = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    const targetId = req.params.userId;
+
+    // Verify target is actually a friend
+    if (!user.friends.some(f => f.toString() === targetId)) {
+      return res.status(400).json({ error: 'User is not in your friend list' });
+    }
+
+    const isClose = (user.closeFriends || []).some(id => id.toString() === targetId);
+
+    if (isClose) {
+      user.closeFriends = user.closeFriends.filter(id => id.toString() !== targetId);
+    } else {
+      user.closeFriends.push(targetId);
+    }
+
+    await user.save();
+    res.json({ isCloseFriend: !isClose, closeFriends: user.closeFriends });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// GET /api/friends/close-friends — Get close friends list
+exports.getCloseFriends = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).populate(
+      'closeFriends',
+      'username displayName avatarColor status lastSeen'
+    );
+    const closeFriends = (user.closeFriends || []).map(f => f.toPublicJSON());
+    res.json({ closeFriends });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+

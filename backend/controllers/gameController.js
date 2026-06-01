@@ -3,6 +3,22 @@ const GameScore = require('../models/GameScore');
 
 const LOWER_IS_BETTER_GAMES = ['reaction-test'];
 
+// Map gameId to User model field name for backward compatibility
+const GAME_FIELD_MAP = {
+  '2048': 'game2048HighScore',
+  'reaction-test': 'reactionBestAvg',
+  'snake': 'snakeHighScore',
+  'simon-says': 'simonHighScore',
+  'whack-a-mole': 'whackHighScore',
+  'type-racer': 'typerBestWpm',
+  'wordle': 'wordleHighScore',
+  'flappy-bird': 'flappyHighScore',
+  'tic-tac-toe': 'tttWins',
+  'desi-quiz': 'desiQuizHighScore',
+  'car-racer': 'carRacerHighScore',
+  'space-shooter': 'spaceShooterHighScore',
+};
+
 exports.saveScore = async (req, res) => {
   try {
     const { gameId, score } = req.body;
@@ -23,14 +39,17 @@ exports.saveScore = async (req, res) => {
         { upsert: true, new: true }
       );
 
-      // Save to user document
-      try {
-        await User.findByIdAndUpdate(
-          req.userId,
-          { $set: { [`gameStats.${gameId}`]: score } }
-        );
-      } catch (err) {
-        console.error('Failed to update User document with new score:', err);
+      // Save to user document using the correct field name
+      const fieldName = GAME_FIELD_MAP[gameId];
+      if (fieldName) {
+        try {
+          await User.findByIdAndUpdate(
+            req.userId,
+            { $set: { [fieldName]: score } }
+          );
+        } catch (err) {
+          console.error('Failed to update User document with new score:', err);
+        }
       }
 
       return res.json({ newHighScore: true, score });

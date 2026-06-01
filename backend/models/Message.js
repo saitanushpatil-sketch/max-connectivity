@@ -18,7 +18,7 @@ const messageSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['text', 'meme', 'gif'],
+    enum: ['text', 'meme', 'gif', 'voice'],
     default: 'text',
   },
   content: {
@@ -48,11 +48,18 @@ const messageSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  // Disappearing messages support
+  expiresAt: {
+    type: Date,
+    default: null,
+  },
 }, {
   timestamps: true,
 });
 
 // Compound index for conversation pagination
 messageSchema.index({ conversationId: 1, createdAt: -1 });
+// TTL index for disappearing messages
+messageSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 module.exports = mongoose.model('Message', messageSchema);
