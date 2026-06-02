@@ -42,6 +42,13 @@ exports.initSocket = (io) => {
       const user = await User.findById(decoded.userId).select('-password');
       if (!user) return next(new Error('User not found'));
       
+      // Session version check — block old device sessions
+      if (decoded.sessionVersion !== undefined && user.sessionVersion !== undefined) {
+        if (decoded.sessionVersion !== user.sessionVersion) {
+          return next(new Error('Session expired — logged in on another device'));
+        }
+      }
+      
       socket.userId = user._id.toString();
       socket.user = user;
       next();
@@ -263,7 +270,7 @@ exports.initSocket = (io) => {
 
     // --- WebRTC Signaling Events ---
 
-    socket.on('call:initiate', async ({ to, offer, callType }) => {
+    socket.on('call:initiate', async ({ to, from, offer, callType, callerName, callerAvatar }) => {
       const targetSockets = getUserSockets(to);
       if (targetSockets.length > 0) {
         targetSockets.forEach((sid) => {
@@ -277,13 +284,15 @@ exports.initSocket = (io) => {
             },
             offer,
             callType,
+            callerName: callerName || socket.user.displayName || socket.user.username,
+            callerAvatar: callerAvatar || socket.user.avatarColor,
           });
         });
       } else {
         const { sendCallPush } = require('../utils/pushService');
         await sendCallPush({
           receiverId: to,
-          callerDisplayName: socket.user.displayName || socket.user.username,
+          callerDisplayName: callerName || socket.user.displayName || socket.user.username,
           callerId: userId,
         });
       }
@@ -295,9 +304,9 @@ exports.initSocket = (io) => {
       });
     });
 
-    socket.on('call:ice', ({ to, candidate }) => {
+    socket.on('call:ice-candidate', ({ to, candidate }) => {
       getUserSockets(to).forEach((sid) => {
-        io.to(sid).emit('call:ice', { from: userId, candidate });
+        io.to(sid).emit('call:ice-candidate', { candidate, from: userId });
       });
     });
 

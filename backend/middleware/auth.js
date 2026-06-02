@@ -20,6 +20,20 @@ const auth = async (req, res, next) => {
       return res.status(401).json({ error: 'User not found' });
     }
 
+    // Session version check — ensures old tokens are invalidated when user logs in on a new device
+    if (decoded.sessionVersion !== undefined && user.sessionVersion !== undefined) {
+      if (decoded.sessionVersion !== user.sessionVersion) {
+        return res.status(401).json({ error: 'Session expired — logged in on another device', code: 'DEVICE_CONFLICT' });
+      }
+    }
+
+    // Device check — if user is owner, verify the device matches
+    if (user.isOwner && user.activeDeviceId && decoded.deviceId) {
+      if (decoded.deviceId !== user.activeDeviceId) {
+        return res.status(401).json({ error: 'Access denied — wrong device', code: 'DEVICE_CONFLICT' });
+      }
+    }
+
     req.user = user;
     req.userId = user._id.toString();
     next();

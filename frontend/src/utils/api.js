@@ -54,6 +54,16 @@ api.interceptors.response.use(
     if (typeof window === 'undefined') {
       return Promise.reject(error);
     }
+    // Auto-logout on device conflict or expired session
+    if (error.response?.status === 401) {
+      const code = error.response?.data?.code;
+      if (code === 'DEVICE_CONFLICT') {
+        clearToken();
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login?error=' + encodeURIComponent('Session ended — logged in on another device');
+        }
+      }
+    }
     return Promise.reject(error);
   }
 );

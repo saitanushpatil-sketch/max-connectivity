@@ -7,8 +7,11 @@ const JWT_EXPIRY = '30d';
 const OTP_TTL_MS = 10 * 60 * 1000;
 const VERIFIED_EMAIL_EXPIRY = '30m';
 
-const generateToken = (userId) => {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: JWT_EXPIRY });
+const generateToken = (userId, sessionVersion, deviceId) => {
+  const payload = { userId };
+  if (sessionVersion !== undefined) payload.sessionVersion = sessionVersion;
+  if (deviceId) payload.deviceId = deviceId;
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: JWT_EXPIRY });
 };
 
 const generateVerifiedEmailToken = (email) => {
@@ -295,5 +298,108 @@ exports.updateProfile = async (req, res) => {
     res.json({ user: user.toPublicJSON() });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// --- OWNER-ONLY LOGIN ---
+
+// Simple in-memory rate limiter for brute force protection
+const loginAttempts = new Map();
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const record = loginAttempts.get(ip);
+  if (!record || now - record.firstAttempt > WINDOW_MS) {
+    loginAttempts.set(ip, { count: 1, firstAttempt: now });
+    return true;
+  }
+  if (record.count >= MAX_ATTEMPTS) {
+    const remaining = Math.ceil((WINDOW_MS - (now - record.firstAttempt)) / 60000);
+    return remaining; // returns minutes remaining
+  }
+  record.count += 1;
+  return true;
+}
+
+// POST /api/auth/owner-login
+exports.ownerLogin = async (req, res) => {
+  try {
+    const { passphrase, deviceId } = req.body;
+    const clientIp = req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
+
+    // Rate limit check
+    const rateCheck = checkRateLimit(clientIp);
+    if (rateCheck !== true) {
+      return res.status(429).json({ 
+        error: `Too many login attempts. Try again in ${rateCheck} minutes.`,
+        code: 'RATE_LIMITED'
+      });
+    }
+
+    if (!passphrase || !deviceId) {
+      return res.status(400).json({ error: 'Passphrase and device ID are required' });
+    }
+
+    const ownerPassphrase = process.env.OWNER_PASSPHRASE;
+    if (!ownerPassphrase) {
+      return res.status(500).json({ error: 'Owner access not configured' });
+    }
+
+    // Validate passphrase (constant-time comparison to prevent timing attacks)
+    const crypto = require('crypto');
+    const inputHash = crypto.createHash('sha256').update(passphrase).digest('hex');
+    const correctHash = crypto.createHash('sha256').update(ownerPassphrase).digest('hex');
+    const match = crypto.timingSafeEqual(Buffer.from(inputHash), Buffer.from(correctHash));
+
+    if (!match) {
+      return res.status(401).json({ error: 'Invalid access passphrase', code: 'INVALID_PASSPHRASE' });
+    }
+
+    // Clear rate limit on success
+    loginAttempts.delete(clientIp);
+
+    // Find or create owner account
+    const ownerEmail = (process.env.OWNER_EMAIL || 'owner@max-connectivity.app').toLowerCase();
+    let user = await User.findOne({ isOwner: true });
+
+    if (!user) {
+      // Try to find by email
+      user = await User.findOne({ email: ownerEmail });
+      if (user) {
+        user.isOwner = true;
+      } else {
+        // Create owner account
+        user = new User({
+          username: 'saitanush',
+          email: ownerEmail,
+          displayName: 'Sai Tanush',
+          avatarColor: '#00F5FF',
+          isOwner: true,
+          badges: ['early_adopter'],
+        });
+      }
+    }
+
+    // Bind to this device — invalidate all other sessions
+    user.activeDeviceId = deviceId;
+    user.sessionVersion = (user.sessionVersion || 0) + 1;
+    user.status = 'online';
+    user.lastSeen = new Date();
+    user.updateStreak();
+    user.checkBadges();
+    await user.save();
+
+    const token = generateToken(user._id, user.sessionVersion, deviceId);
+
+    res.json({
+      token,
+      user: user.toPublicJSON(),
+      deviceBound: true,
+    });
+  } catch (error) {
+    console.error('Owner login error:', error);
+    res.status(500).json({ error: 'Server error during authentication' });
   }
 };

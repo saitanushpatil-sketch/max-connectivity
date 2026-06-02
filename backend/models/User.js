@@ -113,6 +113,10 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed,
     default: null,
   },
+  // Owner-only security
+  isOwner: { type: Boolean, default: false },
+  activeDeviceId: { type: String, default: null },
+  sessionVersion: { type: Number, default: 1 },
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

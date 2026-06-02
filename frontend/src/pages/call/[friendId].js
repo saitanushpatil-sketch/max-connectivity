@@ -101,14 +101,14 @@ export default function CallPage() {
     };
 
     s.on('call:answered', onAnswered);
-    s.on('call:ice', onIce);
+    s.on('call:ice-candidate', onIce);
     s.on('call:ended', onEnded);
     s.on('call:rejected', onRejected);
     s.on('call:busy', onBusy);
 
     return () => {
       s.off('call:answered', onAnswered);
-      s.off('call:ice', onIce);
+      s.off('call:ice-candidate', onIce);
       s.off('call:ended', onEnded);
       s.off('call:rejected', onRejected);
       s.off('call:busy', onBusy);

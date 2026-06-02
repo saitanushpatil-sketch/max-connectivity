@@ -64,7 +64,7 @@ export default function useWebRTC({ socket, localVideoRef, remoteVideoRef }) {
 
     peerConnection.onicecandidate = ({ candidate }) => {
       if (candidate && remoteUserId.current && socket) {
-        socket.emit('call:ice', { to: remoteUserId.current, candidate });
+        socket.emit('call:ice-candidate', { to: remoteUserId.current, candidate });
       }
     };
 

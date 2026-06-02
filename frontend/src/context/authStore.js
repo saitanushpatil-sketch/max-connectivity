@@ -1,6 +1,38 @@
 import { create } from 'zustand';
 import api, { getTokenFromCookie, setToken, clearToken } from '../utils/api';
 
+// Generate a stable device fingerprint
+function getDeviceId() {
+  if (typeof window === 'undefined') return 'server';
+  
+  // Check if we already have one stored
+  const stored = localStorage.getItem('max_device_id');
+  if (stored) return stored;
+  
+  // Generate from device characteristics
+  const parts = [
+    navigator.userAgent,
+    screen.width + 'x' + screen.height,
+    screen.colorDepth,
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+    navigator.language,
+    navigator.hardwareConcurrency || 0,
+    new Date().getTimezoneOffset(),
+  ];
+  
+  // Simple hash
+  let hash = 0;
+  const str = parts.join('|');
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  const deviceId = 'dev_' + Math.abs(hash).toString(36) + '_' + Date.now().toString(36);
+  localStorage.setItem('max_device_id', deviceId);
+  return deviceId;
+}
+
 const useAuthStore = create((set, get) => ({
   user: null,
   token: null,
@@ -39,7 +71,7 @@ const useAuthStore = create((set, get) => ({
       localStorage.setItem('max_user', JSON.stringify(data.user));
       set({ user: data.user, isAuthenticated: true, isLoading: false });
     } catch (err) {
-      // Token invalid - logout
+      // Token invalid or device conflict — logout
       if (err.response?.status === 401) {
         clearToken();
         set({ user: null, token: null, isAuthenticated: false, isLoading: false });
@@ -49,6 +81,17 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
+  // Owner-only passphrase login
+  ownerLogin: async (passphrase) => {
+    const deviceId = getDeviceId();
+    const { data } = await api.post('/auth/owner-login', { passphrase, deviceId });
+    setToken(data.token);
+    localStorage.setItem('max_user', JSON.stringify(data.user));
+    set({ user: data.user, token: data.token, isAuthenticated: true });
+    return data.user;
+  },
+
+  // Legacy methods — kept for compatibility
   sendLoginOtp: async (email) => {
     const { data } = await api.post('/auth/login-otp', { email });
     return data;
@@ -100,4 +143,5 @@ const useAuthStore = create((set, get) => ({
   setLoading: (isLoading) => set({ isLoading }),
 }));
 
+export { getDeviceId };
 export default useAuthStore;

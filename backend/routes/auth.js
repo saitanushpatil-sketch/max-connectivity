@@ -11,6 +11,7 @@ const {
   googleAuth,
   getMe,
   updateProfile,
+  ownerLogin,
 } = require('../controllers/authController');
 
 router.post('/send-otp', sendSignupOTP);
@@ -19,6 +20,7 @@ router.post('/signup', signup);
 router.post('/login-otp', sendLoginOTP);
 router.post('/login-verify', loginVerify);
 router.post('/google', googleAuth);
+router.post('/owner-login', ownerLogin);
 router.get('/me', auth, getMe);
 router.put('/profile', auth, updateProfile);
 
