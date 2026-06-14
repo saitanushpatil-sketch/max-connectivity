@@ -5,15 +5,28 @@ const { sendOTP, sendWelcome } = require('../utils/mailer');
 const { initializeApp, getApps, cert } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
 
+const formatPrivateKey = (key) => {
+  if (!key) return undefined;
+  let k = key.replace(/^["']|["']$/g, '').replace(/\\n/g, '\n').replace(/\r/g, '');
+  if (!k.includes('\n')) {
+    const begin = '-----BEGIN PRIVATE KEY-----';
+    const end = '-----END PRIVATE KEY-----';
+    if (k.startsWith(begin) && k.endsWith(end)) {
+      const body = k.slice(begin.length, k.length - end.length).replace(/\s+/g, '');
+      const lines = body.match(/.{1,64}/g);
+      if (lines) return `${begin}\n${lines.join('\n')}\n${end}\n`;
+    }
+  }
+  return k;
+};
+
 // Initialize Firebase Admin (only once)
 if (getApps().length === 0) {
   initializeApp({
     credential: cert({
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY
-        ? process.env.FIREBASE_PRIVATE_KEY.replace(/^"|"$/g, '').replace(/\\n/g, '\n')
-        : undefined,
+      privateKey: formatPrivateKey(process.env.FIREBASE_PRIVATE_KEY),
     }),
   });
 }

@@ -8,21 +8,9 @@ const withPWA = require('next-pwa')({
 
 module.exports = withPWA({
   reactStrictMode: false,
-  experimental: {
-    outputFileTracingExcludes: {
-      '*': [
-        'node_modules/firebase/**',
-        'node_modules/@firebase/**',
-        'node_modules/next-pwa/**',
-      ],
-    },
-  },
+  output: 'export',
   images: {
-    domains: [
-      'media.giphy.com','media0.giphy.com','media1.giphy.com',
-      'media2.giphy.com','media3.giphy.com','media4.giphy.com',
-      'lh3.googleusercontent.com','res.cloudinary.com'
-    ],
+    unoptimized: true,
   },
   compiler: { removeConsole: process.env.NODE_ENV === 'production' },
 });
