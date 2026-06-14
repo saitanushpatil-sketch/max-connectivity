@@ -12,6 +12,8 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     match: [/^[a-zA-Z0-9_]{3,20}$/, 'Username must be 3-20 chars, letters/numbers/underscores only'],
   },
+  firebaseUid: { type: String, sparse: true, index: true },
+  isVerified: { type: Boolean, default: false },
   email: {
     type: String,
     required: true,

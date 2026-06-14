@@ -2,6 +2,19 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const OTP = require('../models/OTP');
 const { sendOTP, sendWelcome } = require('../utils/mailer');
+const { initializeApp, getApps, cert } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
+
+// Initialize Firebase Admin (only once)
+if (getApps().length === 0) {
+  initializeApp({
+    credential: cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    }),
+  });
+}
 
 const JWT_EXPIRY = '30d';
 const OTP_TTL_MS = 10 * 60 * 1000;
@@ -55,213 +68,61 @@ const validateOTP = async (email, code) => {
   return { ok: true, email: normalized };
 };
 
-const baseUsernameFromName = (name) => {
-  const base = (name || 'operator')
-    .toLowerCase()
-    .replace(/[^a-z0-9_]/g, '_')
-    .replace(/_+/g, '_')
-    .replace(/^_|_$/g, '')
-    .slice(0, 15);
-  return base.length >= 3 ? base : 'operator';
-};
-
-const uniqueUsername = async (name) => {
-  const base = baseUsernameFromName(name);
-  let username = base;
-  let attempt = 0;
-  while (await User.findOne({ username })) {
-    attempt += 1;
-    username = `${base.slice(0, 15)}${attempt}`.slice(0, 20);
-  }
-  return username;
-};
-
-const finishLogin = async (user) => {
-  user.status = 'online';
-  user.lastSeen = new Date();
-  user.updateStreak();
-  user.checkBadges();
-  await user.save();
-  return {
-    token: generateToken(user._id),
-    user: user.toPublicJSON(),
-  };
-};
-
-// POST /api/auth/send-otp
-exports.sendSignupOTP = async (req, res) => {
+// Firebase auth endpoint — verifies Firebase token, creates/updates user
+exports.firebaseAuth = async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-      return res.status(400).json({ error: 'Valid email is required' });
-    }
+    const { firebaseToken, email, displayName, photoURL, uid } = req.body;
 
-    const existing = await User.findOne({ email: email.toLowerCase() });
-    if (existing) {
-      return res.status(400).json({ error: 'Email already registered' });
-    }
+    // Verify Firebase token
+    const decoded = await getAuth().verifyIdToken(firebaseToken);
+    if (decoded.uid !== uid) return res.status(401).json({ error: 'Invalid token' });
 
-    await saveAndSendOTP(email);
-    res.json({ message: 'OTP sent' });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to send verification code' });
-  }
-};
-
-// POST /api/auth/verify-otp
-exports.verifySignupOTP = async (req, res) => {
-  try {
-    const { email, code } = req.body;
-    if (!email || !code) {
-      return res.status(400).json({ error: 'Email and code are required' });
-    }
-
-    const result = await validateOTP(email, code);
-    if (!result.ok) return res.status(400).json({ error: result.error });
-
-    const verifiedEmailToken = generateVerifiedEmailToken(result.email);
-    res.json({ verified: true, email: result.email, verifiedEmailToken });
-  } catch (error) {
-    res.status(500).json({ error: 'Verification failed' });
-  }
-};
-
-// POST /api/auth/signup
-exports.signup = async (req, res) => {
-  try {
-    const { username, email, displayName, avatarColor, verifiedEmailToken } = req.body;
-
-    if (!username || !email || !verifiedEmailToken) {
-      return res.status(400).json({ error: 'Username, email, and verifiedEmailToken are required' });
-    }
-    if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
-      return res.status(400).json({ error: 'Username must be 3-20 chars, letters/numbers/underscores only' });
-    }
-    if (!verifyVerifiedEmailToken(verifiedEmailToken, email)) {
-      return res.status(400).json({ error: 'Email not verified — complete OTP verification first' });
-    }
-
-    const normalizedEmail = email.toLowerCase();
-    const existingUser = await User.findOne({
-      $or: [{ email: normalizedEmail }, { username: username.toLowerCase() }],
-    });
-    if (existingUser) {
-      if (existingUser.email === normalizedEmail) return res.status(400).json({ error: 'Email already registered' });
-      return res.status(400).json({ error: 'Username already taken' });
-    }
-
-    const user = new User({
-      username: username.toLowerCase(),
-      email: normalizedEmail,
-      displayName: displayName || username,
-      avatarColor: avatarColor || '#00F5FF',
-    });
-
-    const count = await User.countDocuments();
-    if (count === 0) user.badges = ['early_adopter'];
-
-    await user.save();
-    sendWelcome(normalizedEmail, user.displayName).catch(() => {});
-
-    const token = generateToken(user._id);
-    res.status(201).json({ token, user: user.toPublicJSON() });
-  } catch (error) {
-    if (error.code === 11000) {
-      const field = Object.keys(error.keyValue)[0];
-      return res.status(400).json({ error: `${field} already exists` });
-    }
-    if (error.name === 'ValidationError') {
-      const msg = Object.values(error.errors)[0].message;
-      return res.status(400).json({ error: msg });
-    }
-    res.status(500).json({ error: 'Server error during signup' });
-  }
-};
-
-// POST /api/auth/login-otp
-exports.sendLoginOTP = async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-      return res.status(400).json({ error: 'Valid email is required' });
-    }
-
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) {
-      return res.status(400).json({ error: 'No account found with this email' });
-    }
-
-    await saveAndSendOTP(email);
-    res.json({ message: 'OTP sent' });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to send access code' });
-  }
-};
-
-// POST /api/auth/login-verify
-exports.loginVerify = async (req, res) => {
-  try {
-    const { email, code } = req.body;
-    if (!email || !code) {
-      return res.status(400).json({ error: 'Email and code are required' });
-    }
-
-    const result = await validateOTP(email, code);
-    if (!result.ok) return res.status(400).json({ error: result.error });
-
-    const user = await User.findOne({ email: result.email });
-    if (!user) return res.status(400).json({ error: 'No account found with this email' });
-
-    const session = await finishLogin(user);
-    res.json(session);
-  } catch (error) {
-    res.status(500).json({ error: 'Server error during login' });
-  }
-};
-
-// POST /api/auth/google
-exports.googleAuth = async (req, res) => {
-  try {
-    const { email, name, googleId } = req.body;
-    if (!email || !googleId) {
-      return res.status(400).json({ error: 'Email and googleId are required' });
-    }
-
-    const normalizedEmail = email.toLowerCase();
-    let user = await User.findOne({
-      $or: [{ email: normalizedEmail }, { googleId }],
-    });
+    // Find or create user in MongoDB
+    let user = await User.findOne({ $or: [{ firebaseUid: uid }, { email }] });
 
     if (!user) {
-      const username = await uniqueUsername(name);
-      user = new User({
+      // New user
+      const username = displayName?.replace(/\s+/g, '').toLowerCase() ||
+                       email.split('@')[0] + Math.floor(Math.random() * 999);
+      user = await User.create({
+        firebaseUid: uid,
+        email,
         username,
-        email: normalizedEmail,
-        displayName: name || username,
-        avatarColor: '#00F5FF',
-        googleId,
+        displayName: displayName || username,
+        avatar: photoURL || null,
+        isVerified: decoded.email_verified || false,
       });
-
-      const count = await User.countDocuments();
-      if (count === 0) user.badges = ['early_adopter'];
-
-      await user.save();
     } else {
-      if (!user.googleId) user.googleId = googleId;
-      if (name && !user.displayName) user.displayName = name;
+      // Update existing user
+      user.firebaseUid = uid;
+      user.lastSeen = new Date();
+      if (photoURL && !user.avatar) user.avatar = photoURL;
+      await user.save();
     }
 
-    const session = await finishLogin(user);
-    res.json(session);
-  } catch (error) {
-    if (error.code === 11000) {
-      return res.status(400).json({ error: 'Account conflict — try again' });
-    }
-    if (error.name === 'ValidationError') {
-      const msg = Object.values(error.errors)[0].message;
-      return res.status(400).json({ error: msg });
-    }
-    res.status(500).json({ error: 'Server error during Google authentication' });
+    // Generate our own JWT for socket auth
+    const token = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        _id: user._id,
+        email: user.email,
+        username: user.username,
+        displayName: user.displayName,
+        avatar: user.avatar,
+        vibe: user.vibe,
+        isOnline: true,
+      }
+    });
+  } catch (err) {
+    console.error('Firebase auth error:', err);
+    res.status(401).json({ error: 'Authentication failed: ' + err.message });
   }
 };
 
@@ -424,4 +285,3 @@ exports.logout = async (req, res) => {
     res.status(500).json({ error: 'Server error during logout' });
   }
 };
-

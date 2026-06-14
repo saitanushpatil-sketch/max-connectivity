@@ -17,12 +17,7 @@ const {
 } = require('../controllers/authController');
 
 // Public routes with rate limiting
-router.post('/send-otp', otpLimiter, sendSignupOTP);
-router.post('/verify-otp', authLimiter, verifySignupOTP);
-router.post('/signup', authLimiter, signup);
-router.post('/login-otp', otpLimiter, sendLoginOTP);
-router.post('/login-verify', authLimiter, loginVerify);
-router.post('/google', authLimiter, googleAuth);
+router.post('/firebase', authLimiter, require('../controllers/authController').firebaseAuth);
 router.post('/owner-login', authLimiter, ownerLogin);
 
 // Authenticated routes

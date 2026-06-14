@@ -184,11 +184,14 @@ function AppInner({ Component, pageProps }) {
 }
 
 export default function App({ Component, pageProps }) {
-  const { init, isAuthenticated, isLoading } = useAuthStore();
+  const { isLoading } = useAuthStore();
   const [appReady, setAppReady] = useState(false);
 
   useEffect(() => {
-    init().finally(() => setAppReady(true));
+    const unsubscribe = useAuthStore.getState().init();
+    // Simulate initial app readiness slightly after Firebase starts hydrating
+    setTimeout(() => setAppReady(true), 500);
+    return () => unsubscribe?.();
   }, []);
 
   if (!appReady || isLoading) {

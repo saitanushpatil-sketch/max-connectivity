@@ -1,266 +1,234 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
-import useAuthStore from '../context/authStore';
+import { motion, AnimatePresence } from 'framer-motion';
+import { signInWithGoogle, signInWithEmail, registerWithEmail, auth } from '../lib/firebase';
+import { useAuthStore } from '../context/authStore';
 
 export default function Login() {
   const router = useRouter();
-  const { ownerLogin } = useAuthStore();
-
-  const [passphrase, setPassphrase] = useState('');
-  const [error, setError] = useState('');
+  const { loginWithFirebase } = useAuthStore();
+  const [mode, setMode] = useState('login'); // login | register
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPass, setShowPass] = useState(false);
-  const [scanLine, setScanLine] = useState(true);
-  const inputRef = useRef(null);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  useEffect(() => {
-    if (router.query.error) {
-      setError(decodeURIComponent(router.query.error));
-    }
-  }, [router.query.error]);
-
-  // Auto-focus input
-  useEffect(() => {
-    setTimeout(() => inputRef.current?.focus(), 500);
-  }, []);
-
-  const handleLogin = async (e) => {
-    e?.preventDefault();
-    if (!passphrase.trim()) {
-      setError('Enter access passphrase');
-      return;
-    }
-    setError('');
+  const handleGoogle = async () => {
     setLoading(true);
+    setError('');
     try {
-      await ownerLogin(passphrase.trim());
-      setScanLine(false);
-      setTimeout(() => router.replace('/chats'), 300);
+      const firebaseUser = await signInWithGoogle();
+      const token = await firebaseUser.getIdToken();
+      await loginWithFirebase(token, firebaseUser);
+      router.push('/chats');
     } catch (err) {
-      const msg = err.response?.data?.error || 'Authentication failed';
-      const code = err.response?.data?.code;
-      if (code === 'RATE_LIMITED') {
-        setError(msg);
-      } else if (code === 'INVALID_PASSPHRASE') {
-        setError('INVALID PASSPHRASE — ACCESS DENIED');
-      } else {
-        setError(msg.toUpperCase());
-      }
-      setPassphrase('');
+      setError(err.message.replace('Firebase: ', ''));
+    } finally {
       setLoading(false);
     }
   };
 
+  const handleEmailAuth = async () => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    if (!email || !password) {
+      setError('Email and password are required');
+      setLoading(false);
+      return;
+    }
+
+    if (mode === 'register' && password !== confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      let firebaseUser;
+      if (mode === 'register') {
+        firebaseUser = await registerWithEmail(email, password);
+        setSuccess('Account created! Please verify your email then login.');
+        setMode('login');
+        setLoading(false);
+        return;
+      } else {
+        firebaseUser = await signInWithEmail(email, password);
+      }
+
+      const token = await firebaseUser.getIdToken();
+      await loginWithFirebase(token, firebaseUser);
+      router.push('/chats');
+    } catch (err) {
+      const msg = err.code === 'auth/user-not-found' ? 'No account found with this email' :
+                  err.code === 'auth/wrong-password' ? 'Incorrect password' :
+                  err.code === 'auth/email-already-in-use' ? 'Email already registered' :
+                  err.code === 'auth/invalid-email' ? 'Invalid email address' :
+                  err.message.replace('Firebase: ', '');
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const inputStyle = {
+    width: '100%', background: 'rgba(37,37,53,0.8)',
+    border: '1px solid #252535', borderRadius: 12,
+    padding: '14px 16px', color: '#E8E8FF',
+    fontFamily: 'Exo 2', fontSize: 14, outline: 'none',
+    boxSizing: 'border-box',
+    transition: 'border-color 0.2s',
+  };
+
+  const btnStyle = (primary) => ({
+    width: '100%', padding: '14px',
+    background: primary ? 'linear-gradient(135deg, rgba(0,245,255,0.2), rgba(255,0,110,0.2))' : 'transparent',
+    border: `1px solid ${primary ? '#00F5FF' : '#252535'}`,
+    borderRadius: 12, color: primary ? '#00F5FF' : '#6B6B8A',
+    fontFamily: 'Rajdhani', fontWeight: 700, fontSize: 15,
+    letterSpacing: 2, cursor: loading ? 'not-allowed' : 'pointer',
+    opacity: loading ? 0.6 : 1,
+    transition: 'all 0.2s',
+    boxSizing: 'border-box',
+  });
+
   return (
     <div style={{
-      display: 'flex', flexDirection: 'column', height: '100%',
-      overflow: 'hidden', position: 'relative',
+      minHeight: '100vh', background: '#0A0A0F',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: 'Exo 2', padding: 20,
+      backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(0,245,255,0.05) 0%, transparent 60%)',
     }}>
-      {/* Animated scan line */}
-      {scanLine && (
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0,
-          height: 2, zIndex: 10,
-          background: 'linear-gradient(90deg, transparent, #00F5FF, transparent)',
-          animation: 'scanDown 3s linear infinite',
-        }} />
-      )}
-
-      {/* Background grid effect */}
+      {/* HUD grid overlay */}
       <div style={{
-        position: 'absolute', inset: 0,
-        backgroundImage: `
-          linear-gradient(rgba(0,245,255,0.03) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(0,245,255,0.03) 1px, transparent 1px)
-        `,
+        position: 'fixed', inset: 0, pointerEvents: 'none',
+        backgroundImage: 'linear-gradient(rgba(0,245,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,245,255,0.03) 1px, transparent 1px)',
         backgroundSize: '40px 40px',
-        pointerEvents: 'none',
       }} />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 24px', position: 'relative', zIndex: 1 }}>
-        {/* Logo & Header */}
-        <div style={{ marginBottom: 40, textAlign: 'center' }}>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            width: 80, height: 80, borderRadius: 6,
-            border: '2px solid #00F5FF',
-            background: 'rgba(0,245,255,0.05)',
-            boxShadow: '0 0 40px rgba(0,245,255,0.15), inset 0 0 20px rgba(0,245,255,0.05)',
-            marginBottom: 20,
-          }}>
-            <span style={{
-              fontFamily: 'Rajdhani, sans-serif',
-              fontWeight: 700, fontSize: 28, color: '#00F5FF',
-              letterSpacing: 3,
-            }}>MAX</span>
-          </div>
-          <div style={{
-            fontFamily: 'Share Tech Mono, monospace',
-            fontSize: 10, letterSpacing: 3, color: '#6B6B8A',
-            marginBottom: 6,
-          }}>SYS://AUTH — JARVIS PROTOCOL</div>
-          <h1 style={{
-            fontFamily: 'Rajdhani, sans-serif',
-            fontSize: 28, fontWeight: 700, color: '#E8E8FF',
-            margin: 0, letterSpacing: 2,
-          }}>OPERATOR ACCESS</h1>
-          <p style={{
-            fontFamily: 'Share Tech Mono, monospace',
-            fontSize: 10, color: '#3A3A4A', marginTop: 6,
-            letterSpacing: 2,
-          }}>🔒 SINGLE-DEVICE SECURE LOGIN</p>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        style={{
+          width: '100%', maxWidth: 400,
+          background: 'rgba(18,18,26,0.95)',
+          border: '1px solid #252535', borderRadius: 24,
+          padding: 32, position: 'relative',
+          backdropFilter: 'blur(20px)',
+          boxShadow: '0 0 60px rgba(0,245,255,0.05)',
+        }}
+      >
+        {/* Corner brackets */}
+        {[['top','left'],['top','right'],['bottom','left'],['bottom','right']].map(([v,h]) => (
+          <div key={`${v}${h}`} style={{
+            position: 'absolute', [v]: 12, [h]: 12,
+            width: 16, height: 16,
+            borderTop: v === 'top' ? '2px solid #00F5FF' : 'none',
+            borderBottom: v === 'bottom' ? '2px solid #00F5FF' : 'none',
+            borderLeft: h === 'left' ? '2px solid #00F5FF' : 'none',
+            borderRight: h === 'right' ? '2px solid #00F5FF' : 'none',
+          }} />
+        ))}
+
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <motion.div
+            animate={{ opacity: [1, 0.6, 1] }}
+            transition={{ repeat: Infinity, duration: 3 }}
+            style={{ fontSize: 36, fontFamily: 'Rajdhani', fontWeight: 800, color: '#00F5FF', letterSpacing: 6 }}
+          >
+            MAX
+          </motion.div>
+          <div style={{ fontSize: 11, color: '#6B6B8A', letterSpacing: 3 }}>CONNECTIVITY PROTOCOL v3.0</div>
         </div>
 
-        {/* Login Card */}
-        <div style={{
-          background: 'rgba(18,18,26,0.8)',
-          border: '1px solid #252535',
-          borderRadius: 4,
-          padding: 24,
-          position: 'relative',
-          backdropFilter: 'blur(10px)',
-        }}>
-          {/* Corner brackets */}
-          <div style={{ position: 'absolute', top: 4, left: 4, width: 12, height: 12, borderTop: '1.5px solid #00F5FF', borderLeft: '1.5px solid #00F5FF' }} />
-          <div style={{ position: 'absolute', top: 4, right: 4, width: 12, height: 12, borderTop: '1.5px solid #00F5FF', borderRight: '1.5px solid #00F5FF' }} />
-          <div style={{ position: 'absolute', bottom: 4, left: 4, width: 12, height: 12, borderBottom: '1.5px solid #00F5FF', borderLeft: '1.5px solid #00F5FF' }} />
-          <div style={{ position: 'absolute', bottom: 4, right: 4, width: 12, height: 12, borderBottom: '1.5px solid #00F5FF', borderRight: '1.5px solid #00F5FF' }} />
-
-          <form onSubmit={handleLogin}>
-            <label style={{
-              display: 'block',
-              fontFamily: 'Share Tech Mono, monospace',
-              fontSize: 10, letterSpacing: 3, color: '#6B6B8A',
-              marginBottom: 10,
-            }}>
-              ACCESS PASSPHRASE
-            </label>
-
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              background: '#0A0A0F',
-              border: `1px solid ${error ? '#FF006E' : '#252535'}`,
-              borderRadius: 4,
-              padding: '0 12px',
-              transition: 'border-color 0.2s',
-            }}>
-              <span style={{ fontSize: 16, opacity: 0.5 }}>🔑</span>
-              <input
-                ref={inputRef}
-                type={showPass ? 'text' : 'password'}
-                value={passphrase}
-                onChange={(e) => { setPassphrase(e.target.value); setError(''); }}
-                placeholder="Enter passphrase..."
-                autoComplete="off"
-                spellCheck="false"
-                style={{
-                  flex: 1,
-                  background: 'none', border: 'none', outline: 'none',
-                  color: '#E8E8FF',
-                  fontFamily: 'Share Tech Mono, monospace',
-                  fontSize: 14, letterSpacing: 1,
-                  padding: '14px 0',
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPass(!showPass)}
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: '#6B6B8A', fontSize: 14, padding: 4,
-                }}
-              >
-                {showPass ? '👁️' : '🙈'}
-              </button>
-            </div>
-
-            {/* Error */}
-            {error && (
-              <div style={{
-                marginTop: 12, padding: '8px 12px', borderRadius: 4,
-                background: 'rgba(255,0,110,0.1)',
-                border: '1px solid rgba(255,0,110,0.3)',
-                fontFamily: 'Share Tech Mono, monospace',
-                fontSize: 11, color: '#FF006E',
-                letterSpacing: 1,
-              }}>
-                ⚠ {error}
-              </div>
-            )}
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading || !passphrase.trim()}
+        {/* Mode tabs */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+          {['login', 'register'].map(m => (
+            <button key={m} onClick={() => { setMode(m); setError(''); setSuccess(''); }}
               style={{
-                width: '100%', marginTop: 20,
-                padding: '14px 0',
-                background: loading ? 'rgba(0,245,255,0.1)' : 'rgba(0,245,255,0.15)',
-                border: `1px solid ${loading ? '#00F5FF44' : '#00F5FF'}`,
-                borderRadius: 4, cursor: loading ? 'default' : 'pointer',
-                color: '#00F5FF',
-                fontFamily: 'Share Tech Mono, monospace',
-                fontSize: 12, letterSpacing: 3, fontWeight: 600,
-                boxShadow: loading ? 'none' : '0 0 20px rgba(0,245,255,0.15)',
-                transition: 'all 0.2s',
-                opacity: (!passphrase.trim() && !loading) ? 0.5 : 1,
-              }}
-            >
-              {loading ? (
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <span style={{ display: 'flex', gap: 4 }}>
-                    {[0, 1, 2].map(i => (
-                      <span key={i} style={{
-                        width: 6, height: 6, borderRadius: '50%',
-                        background: '#00F5FF',
-                        animation: `bounceDot 1.4s ${i * 0.2}s infinite ease-in-out`,
-                      }} />
-                    ))}
-                  </span>
-                  AUTHENTICATING...
-                </span>
-              ) : 'AUTHENTICATE'}
+                flex: 1, padding: '10px',
+                background: mode === m ? 'rgba(0,245,255,0.1)' : 'transparent',
+                border: `1px solid ${mode === m ? '#00F5FF' : '#252535'}`,
+                borderRadius: 10, color: mode === m ? '#00F5FF' : '#6B6B8A',
+                fontFamily: 'Rajdhani', fontWeight: 600, fontSize: 13,
+                letterSpacing: 2, cursor: 'pointer',
+              }}>
+              {m === 'login' ? 'SIGN IN' : 'REGISTER'}
             </button>
-          </form>
+          ))}
         </div>
 
-        {/* Security info */}
-        <div style={{
-          marginTop: 24, textAlign: 'center',
-          fontFamily: 'Share Tech Mono, monospace',
-          fontSize: 9, color: '#3A3A4A', letterSpacing: 2,
-          lineHeight: 1.8,
-        }}>
-          <div>● DEVICE-LOCKED SESSION</div>
-          <div>● BRUTE-FORCE PROTECTED</div>
-          <div>● OWNER ACCESS ONLY</div>
+        {/* Form */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <input
+            type="email" placeholder="Email address"
+            value={email} onChange={e => setEmail(e.target.value)}
+            style={inputStyle}
+          />
+          <input
+            type="password" placeholder="Password"
+            value={password} onChange={e => setPassword(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleEmailAuth()}
+            style={inputStyle}
+          />
+          <AnimatePresence>
+            {mode === 'register' && (
+              <motion.input
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                type="password" placeholder="Confirm password"
+                value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                style={inputStyle}
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Error/Success */}
+          <AnimatePresence>
+            {error && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                style={{ background: 'rgba(255,0,110,0.1)', border: '1px solid #FF006E33',
+                  borderRadius: 8, padding: '10px 12px', color: '#FF006E', fontSize: 13 }}>
+                ⚠ {error}
+              </motion.div>
+            )}
+            {success && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                style={{ background: 'rgba(6,214,160,0.1)', border: '1px solid #06D6A033',
+                  borderRadius: 8, padding: '10px 12px', color: '#06D6A0', fontSize: 13 }}>
+                ✓ {success}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <button onClick={handleEmailAuth} disabled={loading} style={btnStyle(true)}>
+            {loading ? 'AUTHENTICATING...' : mode === 'login' ? 'SIGN IN' : 'CREATE ACCOUNT'}
+          </button>
+
+          {/* Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '4px 0' }}>
+            <div style={{ flex: 1, height: 1, background: '#252535' }} />
+            <span style={{ color: '#6B6B8A', fontSize: 11, letterSpacing: 2 }}>OR</span>
+            <div style={{ flex: 1, height: 1, background: '#252535' }} />
+          </div>
+
+          {/* Google */}
+          <button onClick={handleGoogle} disabled={loading} style={btnStyle(false)}>
+            <span style={{ marginRight: 8 }}>G</span> CONTINUE WITH GOOGLE
+          </button>
         </div>
-      </div>
-
-      {/* Bottom status bar */}
-      <div style={{
-        padding: '12px 24px',
-        borderTop: '1px solid #1A1A26',
-        display: 'flex', justifyContent: 'space-between',
-        fontFamily: 'Share Tech Mono, monospace',
-        fontSize: 9, color: '#3A3A4A', letterSpacing: 1,
-      }}>
-        <span>MAX v2.0</span>
-        <span>● SECURE</span>
-      </div>
-
-      <style jsx>{`
-        @keyframes scanDown {
-          0% { transform: translateY(0); opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { transform: translateY(100vh); opacity: 0; }
-        }
-        @keyframes bounceDot {
-          0%, 80%, 100% { transform: scale(0); }
-          40% { transform: scale(1); }
-        }
-      `}</style>
+      </motion.div>
     </div>
   );
 }
