@@ -27,26 +27,17 @@ const timeAgo = (date) => {
 
 const fetchChats = async (user) => {
   if (!user?._id) return [];
-  const { data } = await api.get('/friends');
-  const friends = data.friends || [];
-  
-  const chatsData = await Promise.all(
-    friends.map(async (friend) => {
-      const convId = buildConvId(user._id, friend._id);
-      try {
-        const msgRes = await api.get(`/messages/${convId}?page=1`);
-        const msgs = msgRes.data.messages || [];
-        const last = msgs.length > 0 ? msgs[msgs.length - 1] : null;
-        const unread = msgs.filter(
-          (m) => m.sender?._id !== user._id && !m.readBy?.includes(user._id)
-        ).length;
-        return { friend, convId, last, unread };
-      } catch (_) {
-        return { friend, convId, last: null, unread: 0 };
-      }
-    })
-  );
-  return chatsData;
+  try {
+    const { data } = await api.get('/conversations');
+    return (data.conversations || []).map(conv => ({
+      friend: conv.friend,
+      convId: conv.convId,
+      last: conv.lastMessage,
+      unread: conv.unreadCount || 0,
+    }));
+  } catch (_) {
+    return [];
+  }
 };
 
 const ChatListItem = memo(({ friend, convId, last, unread }) => (

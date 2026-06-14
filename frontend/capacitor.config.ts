@@ -5,16 +5,25 @@ const config: CapacitorConfig = {
   appName: 'MAX',
   webDir: 'out',
   server: {
-    url: 'https://frontend-mu-gules-75.vercel.app',
     androidScheme: 'https',
-    cleartext: true,
-    allowNavigation: ['*']
+    cleartext: false,
   },
   android: {
-    allowMixedContent: true,
+    allowMixedContent: false,
     captureInput: true,
-    webContentsDebuggingEnabled: true
-  }
+    webContentsDebuggingEnabled: false,
+    backgroundColor: '#0A0A0F',
+  },
+  plugins: {
+    SplashScreen: {
+      launchShowDuration: 2000,
+      backgroundColor: '#0A0A0F',
+      showSpinner: false,
+    },
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert'],
+    },
+  },
 };
 
 export default config;

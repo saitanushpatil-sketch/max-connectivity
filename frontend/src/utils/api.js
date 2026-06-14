@@ -54,13 +54,22 @@ api.interceptors.response.use(
     if (typeof window === 'undefined') {
       return Promise.reject(error);
     }
-    // Auto-logout on device conflict or expired session
+    // Auto-logout on device conflict, revoked token, or expired session
     if (error.response?.status === 401) {
       const code = error.response?.data?.code;
-      if (code === 'DEVICE_CONFLICT') {
-        clearToken();
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login?error=' + encodeURIComponent('Session ended — logged in on another device');
+      const isAuthRoute = error.config?.url?.includes('/auth/');
+      // Don't auto-logout for auth endpoints (login, signup)
+      if (!isAuthRoute) {
+        if (code === 'DEVICE_CONFLICT') {
+          clearToken();
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login?error=' + encodeURIComponent('Session ended — logged in on another device');
+          }
+        } else if (code === 'TOKEN_REVOKED') {
+          clearToken();
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login?error=' + encodeURIComponent('Session has been terminated');
+          }
         }
       }
     }

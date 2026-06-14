@@ -2,9 +2,26 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { searchGifs, getTrending, getCategories } = require('../services/gifService');
+const {
+  getFeed,
+  searchMemes,
+  getTrending: getMemeTrending,
+  getByCategory,
+  getRandom,
+  markUsed,
+  triggerRefresh,
+} = require('../controllers/memeController');
 
-// ─── NEW Giphy routes (used by GifStickerPanel) ────────────────────
+// ─── Meme feed routes ────────────────────────────────────────────
+router.get('/feed', auth, getFeed);
+router.get('/search', auth, searchMemes);
+router.get('/trending', auth, getMemeTrending);
+router.get('/category/:cat', auth, getByCategory);
+router.get('/random', auth, getRandom);
+router.post('/use/:id', auth, markUsed);
+router.post('/refresh', auth, triggerRefresh);
 
+// ─── GIF sub-routes (kept for GifStickerPanel compat) ────────────
 router.get('/gifs/trending', auth, async (req, res) => {
   try {
     const { type = 'gifs', limit = 20 } = req.query;
@@ -34,36 +51,7 @@ router.get('/gifs/categories', auth, async (req, res) => {
   }
 });
 
-// ─── Legacy Tenor-compatible routes (kept for backwards compat) ────
-
-router.get('/trending', auth, async (req, res) => {
-  try {
-    const result = await getTrending(20, 'gifs');
-    res.json({ gifs: result.items });
-  } catch (e) {
-    res.status(500).json({ gifs: [] });
-  }
-});
-
-router.get('/search', auth, async (req, res) => {
-  try {
-    const { q = 'funny', limit = 20, offset = 0 } = req.query;
-    const result = await searchGifs(q, parseInt(limit, 10), parseInt(offset, 10), 'gifs');
-    res.json({ gifs: result.items, next: result.offset });
-  } catch (e) {
-    res.status(500).json({ gifs: [] });
-  }
-});
-
-router.get('/categories', auth, async (req, res) => {
-  try {
-    const cats = await getCategories();
-    res.json({ categories: cats });
-  } catch (e) {
-    res.status(500).json({ categories: [] });
-  }
-});
-
+// ─── Collection route ────────────────────────────────────────────
 router.get('/collection', auth, async (req, res) => {
   try {
     const collections = {

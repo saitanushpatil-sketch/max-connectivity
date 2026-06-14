@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { isBlacklisted } = require('./tokenBlacklist');
 
 const auth = async (req, res, next) => {
   try {
@@ -13,9 +14,15 @@ const auth = async (req, res, next) => {
       return res.status(401).json({ error: 'No token provided' });
     }
 
+    // Check MongoDB token blacklist (persists across restarts)
+    const blacklisted = await isBlacklisted(token);
+    if (blacklisted) {
+      return res.status(401).json({ error: 'Token invalidated. Please login again.', code: 'TOKEN_REVOKED' });
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await User.findById(decoded.userId).select('-password');
+    const user = await User.findById(decoded.userId || decoded.id || decoded._id).select('-password');
     if (!user) {
       return res.status(401).json({ error: 'User not found' });
     }
@@ -36,6 +43,9 @@ const auth = async (req, res, next) => {
 
     req.user = user;
     req.userId = user._id.toString();
+    // Also set req.user.id for compatibility with both patterns
+    if (!req.user.id) req.user.id = req.userId;
+    req.token = token; // Store token for logout blacklisting
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {

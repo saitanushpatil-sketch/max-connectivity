@@ -1,9 +1,11 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Message = require('../models/Message');
-const { sendMessagePush } = require('../utils/pushService');
+const Conversation = require('../models/Conversation');
+const Notification = require('../models/Notification');
+const CallLog = require('../models/CallLog');
 
-// Map: userId -> Set of socketIds (user can have multiple tabs)
+// Track online users: userId -> Set of socketIds
 const onlineUsers = new Map();
 
 const addUser = (userId, socketId) => {
@@ -12,182 +14,157 @@ const addUser = (userId, socketId) => {
 };
 
 const removeUser = (userId, socketId) => {
-  if (!onlineUsers.has(userId)) return;
-  onlineUsers.get(userId).delete(socketId);
-  if (onlineUsers.get(userId).size === 0) onlineUsers.delete(userId);
-};
-
-const getUserSockets = (userId) => {
-  return onlineUsers.has(userId) ? [...onlineUsers.get(userId)] : [];
+  onlineUsers.get(userId)?.delete(socketId);
+  if (onlineUsers.get(userId)?.size === 0) onlineUsers.delete(userId);
 };
 
 const isOnline = (userId) => onlineUsers.has(userId) && onlineUsers.get(userId).size > 0;
 
+const emitToUser = (io, userId, event, data) => {
+  const sockets = onlineUsers.get(userId?.toString());
+  if (sockets) sockets.forEach((sid) => io.to(sid).emit(event, data));
+};
+
+// Export helpers for use by socketEmitter
 const { setSocketHelpers } = require('./socketEmitter');
 
-exports.getUserSockets = getUserSockets;
-exports.isOnline = isOnline;
+module.exports = (io) => {
+  setSocketHelpers(io, (userId) => {
+    const sockets = onlineUsers.get(userId?.toString());
+    return sockets ? [...sockets] : [];
+  });
 
-exports.initSocket = (io) => {
-  setSocketHelpers(io, getUserSockets);
-  // Auth middleware for socket
+  // Auth middleware
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token || socket.handshake.query?.token;
-      if (!token) return next(new Error('Authentication error'));
-      
+      if (!token) return next(new Error('Authentication required'));
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      if (!decoded || !decoded.userId) return next(new Error('Invalid token'));
-      
-      const user = await User.findById(decoded.userId).select('-password');
+      socket.userId = (decoded.userId || decoded.id || decoded._id)?.toString();
+      if (!socket.userId) return next(new Error('Invalid token payload'));
+
+      // Session version check
+      const user = await User.findById(socket.userId).select('sessionVersion username displayName avatarColor');
       if (!user) return next(new Error('User not found'));
-      
-      // Session version check — block old device sessions
       if (decoded.sessionVersion !== undefined && user.sessionVersion !== undefined) {
         if (decoded.sessionVersion !== user.sessionVersion) {
           return next(new Error('Session expired — logged in on another device'));
         }
       }
-      
-      socket.userId = user._id.toString();
       socket.user = user;
       next();
     } catch (err) {
-      if (err.name === 'TokenExpiredError') {
-        return next(new Error('Token expired'));
-      }
-      if (err.name === 'JsonWebTokenError') {
-        return next(new Error('Invalid token'));
-      }
-      next(new Error('Authentication error'));
+      next(new Error('Invalid token: ' + err.message));
     }
   });
 
   io.on('connection', async (socket) => {
     const userId = socket.userId;
-
     addUser(userId, socket.id);
+    socket.join(userId); // join personal room for targeted emits
 
-    // Update status to online
-    await User.findByIdAndUpdate(userId, { status: 'online', lastSeen: new Date() }).catch(() => {});
+    try {
+      await User.findByIdAndUpdate(userId, { status: 'online', lastSeen: new Date() });
+      io.emit('user_status', { userId, status: 'online' });
+    } catch {}
 
-    // Notify friends that user is online
-    const user = await User.findById(userId).select('friends').catch(() => {});
-    if (user?.friends) {
-      user.friends.forEach(friendId => {
-        const friendSockets = getUserSockets(friendId.toString());
-        friendSockets.forEach(sid => {
-          io.to(sid).emit('user_status', { userId, status: 'online' });
-        });
-      });
-    }
+    console.log(`✅ Socket connected: ${userId} (${socket.id}) — ${onlineUsers.get(userId)?.size} connections`);
 
-    // Join a conversation room
+    // ==================== CONVERSATIONS ====================
     socket.on('join_conversation', ({ conversationId }) => {
-      socket.join(conversationId);
+      if (conversationId) socket.join(conversationId);
     });
 
-    // Send message via socket (real-time delivery)
+    socket.on('leave_conversation', ({ conversationId }) => {
+      if (conversationId) socket.leave(conversationId);
+    });
+
+    // ==================== MESSAGES ====================
     socket.on('send_message', async (data, callback) => {
       try {
-        const { conversationId, receiverId, content, type, memeData, replyTo, disappearAfter } = data;
-        if (!conversationId || !receiverId || !content) {
+        const {
+          conversationId, receiverId, content,
+          type = 'text', memeData, replyTo, disappearAfter,
+        } = data;
+
+        if (!conversationId || !content) {
           return callback?.({ error: 'Missing required fields' });
         }
 
-        // Calculate expiresAt for disappearing messages
-        let expiresAt = null;
-        if (disappearAfter && typeof disappearAfter === 'number' && disappearAfter > 0) {
-          expiresAt = new Date(Date.now() + disappearAfter * 60 * 60 * 1000);
-        }
+        const expiresAt = disappearAfter && disappearAfter > 0
+          ? new Date(Date.now() + disappearAfter * 60 * 60 * 1000)
+          : null;
 
-        const msg = await Message.create({
+        const message = await Message.create({
           conversationId,
           sender: userId,
-          type: type || 'text',
           content,
-          memeData: (type === 'meme' || type === 'gif') ? memeData : undefined,
-          replyTo: replyTo || null,
+          type,
+          ...(memeData && { memeData }),
+          ...(replyTo && { replyTo }),
+          ...(expiresAt && { expiresAt }),
           readBy: [userId],
-          expiresAt,
         });
 
-        const populated = await Message.findById(msg._id)
+        const populated = await Message.findById(message._id)
           .populate('sender', 'username displayName avatarColor')
           .populate('replyTo', 'content type sender memeData deletedForEveryone');
 
-        // Emit to conversation room
+        // Update conversation metadata
+        await Conversation.findByIdAndUpdate(conversationId, {
+          lastMessage: message._id,
+          lastMessageAt: new Date(),
+          ...(receiverId && { $inc: { [`unreadCounts.${receiverId}`]: 1 } }),
+        }).catch(() => {});
+
+        // Emit to conversation room (covers participants in the room)
         io.to(conversationId).emit('receive_message', { message: populated });
 
         // Notify receiver even if not in conversation room
-        const receiverSockets = getUserSockets(receiverId);
-        if (receiverSockets.length > 0) {
-          receiverSockets.forEach(sid => {
-            io.to(sid).emit('new_message_notification', {
-              conversationId,
-              message: populated,
-              from: { userId, username: socket.user.username, displayName: socket.user.displayName, avatarColor: socket.user.avatarColor },
-            });
-          });
-        } else {
-          // Receiver offline — Web Push notification
-          sendMessagePush({
-            receiverId,
-            senderDisplayName: socket.user.displayName || socket.user.username,
-            content,
+        if (receiverId) {
+          const notification = await Notification.create({
+            userId: receiverId,
+            type: 'message',
+            title: socket.user.displayName || socket.user.username,
+            body: type === 'text' ? content?.substring(0, 60) : `Sent a ${type}`,
+            data: { conversationId, messageId: message._id },
+          }).catch(() => null);
+
+          emitToUser(io, receiverId, 'new_message_notification', {
             conversationId,
-            messageType: type || 'text',
-            memeName: memeData?.name,
-          }).catch(() => {});
+            message: populated,
+            from: {
+              userId,
+              username: socket.user.username,
+              displayName: socket.user.displayName,
+              avatarColor: socket.user.avatarColor,
+            },
+            notification,
+          });
         }
 
+        // Confirm to sender
+        socket.emit('message_sent', { message: populated });
         callback?.({ success: true, message: populated });
       } catch (err) {
+        console.error('send_message error:', err.message);
         callback?.({ error: 'Failed to send message' });
       }
     });
 
-    // Typing indicators
-    socket.on('typing_start', ({ conversationId, receiverId }) => {
-      const receiverSockets = getUserSockets(receiverId);
-      receiverSockets.forEach(sid => {
-        io.to(sid).emit('user_typing', {
-          conversationId,
-          userId,
-          username: socket.user.username,
-          displayName: socket.user.displayName,
-        });
-      });
-    });
-
-    socket.on('typing_stop', ({ conversationId, receiverId }) => {
-      const receiverSockets = getUserSockets(receiverId);
-      receiverSockets.forEach(sid => {
-        io.to(sid).emit('user_stop_typing', { conversationId, userId });
-      });
-    });
-
-    // Clear typing indicator on disconnect
-    socket.on('disconnect', () => {
-      const userSockets = getUserSockets(userId);
-      if (userSockets.length === 0) {
-        // User is completely offline, notify all friends to clear typing
-        // This is handled by the main disconnect handler above
-      }
-    });
-
-    // React to message
     socket.on('react_message', async ({ messageId, emoji, conversationId }) => {
       try {
         const msg = await Message.findById(messageId);
         if (!msg) return;
 
-        const existing = msg.reactions.find(r => r.emoji === emoji);
+        const existing = msg.reactions.find((r) => r.emoji === emoji);
         if (existing) {
-          const idx = existing.users.findIndex(u => u.toString() === userId);
+          const idx = existing.users.findIndex((u) => u.toString() === userId);
           if (idx > -1) {
             existing.users.splice(idx, 1);
-            if (existing.users.length === 0) msg.reactions = msg.reactions.filter(r => r.emoji !== emoji);
+            if (existing.users.length === 0) {
+              msg.reactions = msg.reactions.filter((r) => r.emoji !== emoji);
+            }
           } else {
             existing.users.push(userId);
           }
@@ -198,14 +175,154 @@ exports.initSocket = (io) => {
         await msg.save();
         io.to(conversationId).emit('message_reacted', { messageId, reactions: msg.reactions });
       } catch (err) {
+        console.error('react_message error:', err.message);
       }
     });
 
-    // Tic Tac Toe multiplayer
+    socket.on('mark_read', async ({ conversationId, senderId }) => {
+      try {
+        if (!conversationId || !senderId) return;
+        await Message.updateMany(
+          { conversationId, sender: senderId, readBy: { $ne: userId } },
+          { $addToSet: { readBy: userId } }
+        );
+        // Reset unread count in Conversation model
+        await Conversation.findByIdAndUpdate(conversationId, {
+          [`unreadCounts.${userId}`]: 0,
+        }).catch(() => {});
+        emitToUser(io, senderId, 'messages_read', { conversationId, readBy: userId });
+      } catch (err) {
+        console.error('mark_read error:', err.message);
+      }
+    });
+
+    // ==================== TYPING ====================
+    socket.on('typing_start', ({ conversationId, receiverId }) => {
+      if (receiverId) {
+        emitToUser(io, receiverId, 'user_typing', {
+          conversationId,
+          userId,
+          username: socket.user.username,
+          displayName: socket.user.displayName,
+        });
+      }
+    });
+
+    socket.on('typing_stop', ({ conversationId, receiverId }) => {
+      if (receiverId) {
+        emitToUser(io, receiverId, 'user_stop_typing', { conversationId, userId });
+      }
+    });
+
+    // ==================== CALLS ====================
+    socket.on('call:initiate', async ({ to, offer, callType, callerName, callerAvatar }) => {
+      try {
+        if (!to) return;
+        console.log(`📞 Call: ${userId} → ${to} (${callType})`);
+
+        if (!isOnline(to)) {
+          socket.emit('call:unavailable', { reason: 'User is offline' });
+          return;
+        }
+
+        emitToUser(io, to, 'call:incoming', {
+          from: userId,
+          fromUser: {
+            _id: userId,
+            username: socket.user.username,
+            displayName: socket.user.displayName,
+            avatarColor: socket.user.avatarColor,
+          },
+          offer,
+          callType,
+          callerName: callerName || socket.user.displayName || socket.user.username,
+          callerAvatar: callerAvatar || socket.user.avatarColor,
+        });
+
+        // Log call attempt
+        await CallLog.create({
+          caller: userId,
+          receiver: to,
+          callType,
+          status: 'initiated',
+          startedAt: new Date(),
+        }).catch(() => {});
+      } catch (err) {
+        console.error('call:initiate error:', err.message);
+      }
+    });
+
+    socket.on('call:answer', ({ to, answer }) => {
+      if (to) emitToUser(io, to, 'call:answered', { answer, from: userId });
+    });
+
+    socket.on('call:ice-candidate', ({ to, candidate }) => {
+      if (to && candidate) emitToUser(io, to, 'call:ice-candidate', { candidate, from: userId });
+    });
+
+    socket.on('call:end', async ({ to, duration }) => {
+      if (to) emitToUser(io, to, 'call:ended', { from: userId });
+      try {
+        await CallLog.findOneAndUpdate(
+          { caller: userId, receiver: to, status: 'initiated' },
+          { status: 'completed', duration: duration || 0, endedAt: new Date() },
+          { sort: { startedAt: -1 } }
+        );
+      } catch {}
+    });
+
+    socket.on('call:reject', async ({ to }) => {
+      if (to) emitToUser(io, to, 'call:rejected', { from: userId });
+      try {
+        await CallLog.findOneAndUpdate(
+          { caller: to, receiver: userId, status: 'initiated' },
+          { status: 'rejected', endedAt: new Date() },
+          { sort: { startedAt: -1 } }
+        );
+        // Create missed call notification
+        await Notification.create({
+          userId: to,
+          type: 'call_missed',
+          title: 'Missed Call',
+          body: `Missed call from ${socket.user.displayName || socket.user.username}`,
+          data: { from: userId },
+        }).catch(() => {});
+      } catch {}
+    });
+
+    socket.on('call:busy', ({ to }) => {
+      if (to) emitToUser(io, to, 'call:busy', { from: userId });
+    });
+
+    // ==================== FRIENDS ====================
+    socket.on('friend:request', async ({ to }) => {
+      if (!to) return;
+      emitToUser(io, to, 'friend:request', { from: userId });
+      await Notification.create({
+        userId: to,
+        type: 'friend_request',
+        title: 'Friend Request',
+        body: `${socket.user.displayName || socket.user.username} wants to connect`,
+        data: { from: userId },
+      }).catch(() => {});
+    });
+
+    socket.on('friend:accept', async ({ to }) => {
+      if (!to) return;
+      emitToUser(io, to, 'friend:accepted', { from: userId });
+      await Notification.create({
+        userId: to,
+        type: 'friend_accept',
+        title: 'Friend Accepted',
+        body: `${socket.user.displayName || socket.user.username} accepted your request`,
+        data: { from: userId },
+      }).catch(() => {});
+    });
+
+    // ==================== GAMES ====================
     socket.on('ttt_challenge', ({ opponentId, gameId }) => {
-      const opponentSockets = getUserSockets(opponentId);
-      opponentSockets.forEach((sid) => {
-        io.to(sid).emit('ttt_challenge', {
+      if (opponentId) {
+        emitToUser(io, opponentId, 'ttt_challenge', {
           from: userId,
           gameId,
           challenger: {
@@ -215,118 +332,38 @@ exports.initSocket = (io) => {
             avatarColor: socket.user.avatarColor,
           },
         });
-      });
+      }
     });
 
     socket.on('ttt_move', ({ gameId, board, nextPlayer, opponentId }) => {
-      const opponentSockets = getUserSockets(opponentId);
-      opponentSockets.forEach((sid) => {
-        io.to(sid).emit('ttt_move', { gameId, board, nextPlayer, from: userId });
-      });
+      if (opponentId) {
+        emitToUser(io, opponentId, 'ttt_move', { gameId, board, nextPlayer, from: userId });
+      }
     });
 
     socket.on('ttt_result', ({ gameId, winner, opponentId }) => {
-      const opponentSockets = getUserSockets(opponentId);
-      opponentSockets.forEach((sid) => {
-        io.to(sid).emit('ttt_result', { gameId, winner, from: userId });
-      });
-    });
-
-    // Mark messages as read
-    socket.on('mark_read', async ({ conversationId, senderId }) => {
-      try {
-        await Message.updateMany(
-          { conversationId, sender: senderId, readBy: { $ne: userId } },
-          { $addToSet: { readBy: userId } }
-        );
-        // Notify sender their messages were read
-        const senderSockets = getUserSockets(senderId);
-        senderSockets.forEach(sid => {
-          io.to(sid).emit('messages_read', { conversationId, readBy: userId });
-        });
-      } catch (err) {
+      if (opponentId) {
+        emitToUser(io, opponentId, 'ttt_result', { gameId, winner, from: userId });
       }
     });
 
-    // Disconnect
-    socket.on('disconnect', async () => {
+    // ==================== DISCONNECT ====================
+    socket.on('disconnect', async (reason) => {
       removeUser(userId, socket.id);
+      console.log(`❌ Disconnected: ${userId} (${reason}) — ${onlineUsers.get(userId)?.size || 0} remaining`);
 
       if (!isOnline(userId)) {
-        const lastSeen = new Date();
-        await User.findByIdAndUpdate(userId, { status: 'offline', lastSeen }).catch(() => {});
-
-        const user = await User.findById(userId).select('friends').catch(() => {});
-        if (user?.friends) {
-          user.friends.forEach(friendId => {
-            const friendSockets = getUserSockets(friendId.toString());
-            friendSockets.forEach(sid => {
-              io.to(sid).emit('user_status', { userId, status: 'offline', lastSeen });
-            });
-          });
-        }
+        try {
+          await User.findByIdAndUpdate(userId, { status: 'offline', lastSeen: new Date() });
+          io.emit('user_status', { userId, status: 'offline', lastSeen: new Date() });
+        } catch {}
       }
     });
 
-    // --- WebRTC Signaling Events ---
-
-    socket.on('call:initiate', async ({ to, from, offer, callType, callerName, callerAvatar }) => {
-      const targetSockets = getUserSockets(to);
-      if (targetSockets.length > 0) {
-        targetSockets.forEach((sid) => {
-          io.to(sid).emit('call:incoming', {
-            from: userId,
-            fromUser: {
-              _id: userId,
-              username: socket.user.username,
-              displayName: socket.user.displayName,
-              avatarColor: socket.user.avatarColor,
-            },
-            offer,
-            callType,
-            callerName: callerName || socket.user.displayName || socket.user.username,
-            callerAvatar: callerAvatar || socket.user.avatarColor,
-          });
-        });
-      } else {
-        const { sendCallPush } = require('../utils/pushService');
-        await sendCallPush({
-          receiverId: to,
-          callerDisplayName: callerName || socket.user.displayName || socket.user.username,
-          callerId: userId,
-        });
-      }
+    socket.on('error', (err) => {
+      console.error(`Socket error for ${userId}:`, err.message);
     });
-
-    socket.on('call:answer', ({ to, answer }) => {
-      getUserSockets(to).forEach((sid) => {
-        io.to(sid).emit('call:answered', { from: userId, answer });
-      });
-    });
-
-    socket.on('call:ice-candidate', ({ to, candidate }) => {
-      getUserSockets(to).forEach((sid) => {
-        io.to(sid).emit('call:ice-candidate', { candidate, from: userId });
-      });
-    });
-
-    socket.on('call:reject', ({ to }) => {
-      getUserSockets(to).forEach((sid) => {
-        io.to(sid).emit('call:rejected', { from: userId });
-      });
-    });
-
-    socket.on('call:end', ({ to }) => {
-      getUserSockets(to).forEach((sid) => {
-        io.to(sid).emit('call:ended', { from: userId });
-      });
-    });
-
-    socket.on('call:busy', ({ to }) => {
-      getUserSockets(to).forEach((sid) => {
-        io.to(sid).emit('call:busy', { from: userId });
-      });
-    });
-
   });
+
+  return io;
 };

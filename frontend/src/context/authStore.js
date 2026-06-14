@@ -129,9 +129,26 @@ const useAuthStore = create((set, get) => ({
     set({ user, token, isAuthenticated: true, isLoading: false });
   },
 
-  logout: () => {
-    clearToken();
-    set({ user: null, token: null, isAuthenticated: false });
+  logout: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+    } catch {} finally {
+      clearToken();
+      localStorage.removeItem('max_user');
+      // Disconnect socket
+      try {
+        const { getSocket } = require('../hooks/useSocket');
+        const socket = getSocket();
+        if (socket) socket.disconnect();
+      } catch {}
+      set({ user: null, token: null, isAuthenticated: false });
+    }
   },
 
   updateUser: (updates) => {

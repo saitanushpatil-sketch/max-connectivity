@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
+import dynamic from 'next/dynamic';
 import useAuthStore from '../context/authStore';
 import useCallStore, { storeCallToSession } from '../context/callStore';
 import Head from 'next/head';
@@ -14,6 +15,8 @@ import { ToastProvider } from '../hooks/useToast';
 import useToast from '../hooks/useToast';
 import { AnimatePresence, motion } from 'framer-motion';
 import '../styles/globals.css';
+
+const JARVISAssistant = dynamic(() => import('../components/JARVISAssistant'), { ssr: false });
 
 const PUBLIC_ROUTES = [
   '/login', '/signup', '/offline',
@@ -171,6 +174,9 @@ function AppInner({ Component, pageProps }) {
             </motion.div>
           </AnimatePresence>
           <GreetingOverlay />
+          {isAuthenticated && (
+            <JARVISAssistant currentUser={user} currentPage={router.pathname} />
+          )}
         </div>
       </div>
     </>

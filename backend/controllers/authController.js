@@ -403,3 +403,25 @@ exports.ownerLogin = async (req, res) => {
     res.status(500).json({ error: 'Server error during authentication' });
   }
 };
+
+// POST /api/auth/logout
+exports.logout = async (req, res) => {
+  try {
+    const { blacklistToken } = require('../middleware/tokenBlacklist');
+
+    // Blacklist the current token in MongoDB (persists across restarts)
+    const token = req.token || req.headers.authorization?.split(' ')[1];
+    if (token) await blacklistToken(token);
+
+    // Mark user offline
+    await User.findByIdAndUpdate(req.userId, {
+      status: 'offline',
+      lastSeen: new Date(),
+    });
+
+    res.json({ success: true, message: 'Logged out successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error during logout' });
+  }
+};
+
